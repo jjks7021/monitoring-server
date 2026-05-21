@@ -66,4 +66,18 @@ public class DeviceController {
             return ResponseEntity.badRequest().body("데이터 처리 중 오류 발생: " + e.getMessage());
         }
     }
+
+    /**
+     * 3. 어르신 주거지별 활동 통계 조회 API (보호자 앱 리포트용)
+     * 찬우님이 보호자 화면에서 도넛 차트나 파이 그래프를 그릴 수 있게 통계용 맵(Map) 데이터를 반환합니다.
+     */
+    @GetMapping("/statistics/{loginCode}")
+    public ResponseEntity<?> getStatistics(@PathVariable("loginCode") String loginCode) {
+        try {
+            Map<String, Long> stats = monitoringService.getLocationStatistics(loginCode);
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("통계 조회 실패: " + e.getMessage());
+        }
+    }
 }
