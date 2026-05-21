@@ -4,6 +4,7 @@ import com.godoksa.monitoring.entity.Device;
 import com.godoksa.monitoring.entity.User;
 import com.godoksa.monitoring.repository.DeviceRepository;
 import com.godoksa.monitoring.repository.UserRepository;
+import com.godoksa.monitoring.service.MonitoringService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +18,7 @@ public class DeviceController {
 
     private final DeviceRepository deviceRepository;
     private final UserRepository userRepository;
+    private final MonitoringService monitoringService; // 현성님이 만든 분석 서비스 주입!
 
     /**
      * 1. 기기 등록 API
@@ -43,15 +45,25 @@ public class DeviceController {
     }
 
     /**
-     * 2. 좌표 데이터 수신 API (현성님 핵심 기획)
-     * 앱(Edge)에서 MoveNet으로 뽑은 x, y 좌표를 이쪽으로 쏩니다.
+     * 2. 좌표 데이터 수신 및 고독사 예방 알고리즘 분석 API (현성님 핵심 기획)
+     * 앱(Edge)에서 MoveNet으로 뽑은 x, y 좌표와 체류 정보를 이쪽으로 쏩니다.
      */
     @PostMapping("/coordinates")
     public ResponseEntity<?> receiveCoordinates(@RequestBody Map<String, Object> data) {
-        // 실제로는 여기서 ActivityLog 엔티티를 생성하고 저장해야 합니다.
-        // 그리고 여기서 '무기력 지수'나 '화장실 체류 시간' 분석 로직을 호출하게 됩니다.
-        
-        System.out.println("좌표 수신: " + data.toString());
-        return ResponseEntity.ok("데이터 수신 완료");
+        try {
+            // 앱이 보내온 데이터 파싱
+            String loginCode = (String) data.get("loginCode");
+            Double x = Double.valueOf(data.get("x").toString());
+            Double y = Double.valueOf(data.get("y").toString());
+            String locationTag = (String) data.get("locationTag"); // "TOILET" 또는 "ROOM"
+            int currentDuration = Integer.parseInt(data.get("currentDuration").toString()); // 현재 체류 시간 (분)
+
+            // 현성님이 구현한 핵심 알고리즘 서비스 호출! (DB 저장 및 300% 체류 검사)
+            monitoringService.analyzeMovement(loginCode, x, y, locationTag, currentDuration);
+
+            return ResponseEntity.ok("데이터 수신 및 분석 완료");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("데이터 처리 중 오류 발생: " + e.getMessage());
+        }
     }
 }
