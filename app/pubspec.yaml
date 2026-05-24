@@ -1,0 +1,50 @@
+name: monitoring_app
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.1
+
+# Dependencies specify other packages that your package needs in order to work.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The following adds the Cupertino Icons font to your application.
+  cupertino_icons: ^1.0.8
+  table_calendar: ^3.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints
+  flutter_lints: ^6.0.0
+
+# The following section is specific to Flutter packages.
+# 🔥 flutter 항목은 파일 전체에 딱 한 번만 있어야 합니다!
+flutter:
+  uses-material-design: true
+
+  fonts:
+    - family: YPairingFont
+      fonts:
+        - asset: assets/fonts/YPairingFont-Bold.otf
+    - family: KCC-Hanbit
+      fonts:
+        - asset: assets/fonts/KCC-Hanbit.ttf
+    - family: Jalnan2
+      fonts:
+        - asset: assets/fonts/Jalnan2.otf
+    - family: AtoZ
+      fonts:
+        - asset: assets/fonts/AtoZ.ttf
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.

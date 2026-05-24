@@ -1,0 +1,1553 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:table_calendar/table_calendar.dart';
+
+void main() {
+  runApp(const GodoksaApp());
+}
+
+class AppSettings {
+  static int fontLevel = 3; // 1~8단계
+
+  // 글짜 크기 비율 계산
+  static double get fontScale => 0.8 + (fontLevel - 1) * 0.1;
+}
+
+class GodoksaApp extends StatefulWidget {
+  const GodoksaApp({super.key});
+
+  @override
+  State<GodoksaApp> createState() => _GodoksaAppState();
+
+  static _GodoksaAppState? of(BuildContext context) =>
+      context.findAncestorStateOfType<_GodoksaAppState>();
+}
+
+class _GodoksaAppState extends State<GodoksaApp> {
+  void updateFontScale() {
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const Color mainDarkGreen = Color.fromARGB(255, 30, 82, 49);
+    const Color subGreen = Color(0xFF4F6F52);
+
+    return MaterialApp(
+      title: '모프 케어',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: subGreen,
+          surface: const Color(0xFFF7F9F7),
+        ),
+        scaffoldBackgroundColor: const Color(0xFFF7F9F7),
+        fontFamily: 'KCC-Hanbit', // 앱 전체 기본 폰트
+        appBarTheme: const AppBarTheme(
+          backgroundColor: mainDarkGreen,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          titleTextStyle: TextStyle(
+            fontFamily: 'YPairingFont', // 💡 앱바에 Y페어링체 적용
+            fontSize: 22,
+            // fontWeight: FontWeight.bold, <- 충돌 방지를 위해 삭제
+            color: Colors.white,
+          ),
+        ),
+      ),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(AppSettings.fontScale)),
+          child: child!,
+        );
+      },
+      home: const SplashScreen(),
+    );
+  }
+}
+
+Route _createRoute(Widget page) {
+  return PageRouteBuilder(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      const begin = Offset(0.0, 1.0);
+      const end = Offset.zero;
+      const curve = Curves.easeInOutCubic;
+      var iTween = Tween(
+        begin: begin,
+        end: end,
+      ).chain(CurveTween(curve: curve));
+      return SlideTransition(position: animation.drive(iTween), child: child);
+    },
+    transitionDuration: const Duration(milliseconds: 600),
+  );
+}
+
+// --- ⏳ 1. 로딩창 ---
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Timer(const Duration(milliseconds: 2000), () {
+      Navigator.pushReplacement(
+        context,
+        _createRoute(const RoleSelectionScreen()),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const Color requestedTextColor = Color.fromARGB(255, 30, 82, 49);
+    return Scaffold(
+      backgroundColor: const Color(0xFFE8F3D6),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              '소중한 사람과 마음을 연결하는',
+              style: TextStyle(
+                fontFamily: 'YPairingFont', // 💡 Y페어링체 적용
+                fontSize: 18.0,
+                color: requestedTextColor,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 15),
+            const Text(
+              '릾',
+              style: TextStyle(
+                fontFamily: 'YPairingFont', // 💡 Y페어링체 적용
+                fontSize: 130.0,
+                color: requestedTextColor,
+              ),
+            ),
+            const SizedBox(height: 15),
+            const Text(
+              '모프 케어',
+              style: TextStyle(
+                fontFamily: 'YPairingFont', // 💡 Y페어링체 적용
+                fontSize: 48.0,
+                color: requestedTextColor,
+                // fontWeight: FontWeight.bold, <- 충돌 방지를 위해 삭제
+                height: 1.1,
+              ),
+            ),
+            const Text(
+              '서비스',
+              style: TextStyle(
+                fontFamily: 'YPairingFont', // 💡 Y페어링체 적용
+                fontSize: 48.0,
+                color: requestedTextColor,
+                // fontWeight: FontWeight.bold, <- 충돌 방지를 위해 삭제
+                height: 1.1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+//사용자 유형 선택
+class RoleSelectionScreen extends StatefulWidget {
+  const RoleSelectionScreen({super.key});
+  @override
+  State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
+}
+
+class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
+  String? selectedRole;
+  final Color mainDarkGreen = const Color.fromARGB(255, 30, 82, 49);
+  final Color subGreen = const Color(0xFF4F6F52);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('릾 모프 케어')),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '사용자 유형을 선택해주세요',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 28.0,
+                color: subGreen,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 50),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => selectedRole = 'patient'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      decoration: BoxDecoration(
+                        color: selectedRole == 'patient'
+                            ? subGreen
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: subGreen, width: 2),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.accessibility_new,
+                            size: 40,
+                            color: selectedRole == 'patient'
+                                ? Colors.white
+                                : subGreen,
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            '피보호자용',
+                            style: TextStyle(
+                              fontFamily: 'Jalnan2',
+                              fontSize: 22,
+                              color: selectedRole == 'patient'
+                                  ? Colors.white
+                                  : subGreen,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => selectedRole = 'guardian'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      decoration: BoxDecoration(
+                        color: selectedRole == 'guardian'
+                            ? subGreen
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: subGreen, width: 2),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.supervisor_account,
+                            size: 40,
+                            color: selectedRole == 'guardian'
+                                ? Colors.white
+                                : subGreen,
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            '보호자용',
+                            style: TextStyle(
+                              fontFamily: 'Jalnan2',
+                              fontSize: 22,
+                              color: selectedRole == 'guardian'
+                                  ? Colors.white
+                                  : subGreen,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 60),
+            if (selectedRole != null)
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: mainDarkGreen,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 22),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                onPressed: () {
+                  if (selectedRole == 'patient') {
+                    Navigator.push(
+                      context,
+                      _createRoute(const PatientConnectScreen()),
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      _createRoute(const GuardianConnectScreen()),
+                    );
+                  }
+                },
+                child: const Text(
+                  '시작하기',
+                  style: TextStyle(
+                    fontFamily: 'Jalnan2',
+                    fontSize: 24.0,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// 피보호자 모드
+class PatientConnectScreen extends StatelessWidget {
+  const PatientConnectScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    const Color subGreen = Color(0xFF4F6F52);
+    return Scaffold(
+      appBar: AppBar(title: const Text('릾 모프 케어')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock_open_rounded, size: 80, color: subGreen),
+              const SizedBox(height: 20),
+              const Text(
+                '보호자 연결 대기 중',
+                style: TextStyle(
+                  fontSize: 26,
+                  color: subGreen,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 40),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F3D6),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      '내 연결 코드',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: subGreen,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      '523 891',
+                      style: TextStyle(
+                        fontSize: 50,
+                        color: subGreen,
+                        letterSpacing: 4,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          _createRoute(const PatientMainHub()),
+                          (route) => false,
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.check_circle_outline,
+                        color: subGreen,
+                      ),
+                      label: const Text(
+                        '보호자 연결 수락 시뮬레이션', // 나중에 이 부분 없애야함!!!!!
+                        style: TextStyle(
+                          color: subGreen,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// 보호자 모드
+class GuardianConnectScreen extends StatefulWidget {
+  const GuardianConnectScreen({super.key});
+  @override
+  State<GuardianConnectScreen> createState() => _GuardianConnectScreenState();
+}
+
+class _GuardianConnectScreenState extends State<GuardianConnectScreen> {
+  final TextEditingController _codeController = TextEditingController();
+  final Color mainDarkGreen = const Color.fromARGB(255, 30, 82, 49);
+  final Color subGreen = const Color(0xFF4F6F52);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('릾 모프 케어')),
+      body: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Icon(Icons.vpn_key_rounded, size: 80, color: subGreen),
+            const SizedBox(height: 20),
+            Text(
+              '피보호자 코드 입력',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 26,
+                color: subGreen,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 40),
+            TextField(
+              controller: _codeController,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              maxLength: 6,
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 8,
+                color: subGreen,
+              ),
+              decoration: InputDecoration(
+                hintText: '000000',
+                counterText: '',
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: subGreen, width: 2),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Colors.grey),
+                ),
+              ),
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: mainDarkGreen,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              onPressed: () {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  _createRoute(const GuardianMainHub()),
+                  (route) => false,
+                );
+              },
+              child: const Text(
+                '연결하기',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class GuardianMainHub extends StatefulWidget {
+  const GuardianMainHub({super.key});
+  @override
+  State<GuardianMainHub> createState() => _GuardianMainHubState();
+}
+
+class _GuardianMainHubState extends State<GuardianMainHub> {
+  int _currentIndex = 0;
+  final Map<DateTime, List<String>> _sharedMemoEvents = {};
+  late final List<Widget> _tabs;
+  final Color subGreen = const Color(0xFF4F6F52);
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = [
+      const GuardianHomeScreen(),
+      GuardianCalendarScreen(memoEvents: _sharedMemoEvents),
+      const GuardianNotificationScreen(),
+      const SettingsScreen(isGuardian: true),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('릾 모프 케어')),
+      body: _tabs[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        selectedItemColor: subGreen,
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: '홈'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month_rounded),
+            label: '캘린더',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications_rounded),
+            label: '알림',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_rounded),
+            label: '설정',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// 🏠 보호자 탭 [홈]
+class GuardianHomeScreen extends StatefulWidget {
+  const GuardianHomeScreen({super.key});
+  @override
+  State<GuardianHomeScreen> createState() => _GuardianHomeScreenState();
+}
+
+class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
+  bool isRequested = false;
+  final Color mainDarkGreen = const Color.fromARGB(255, 30, 82, 49);
+  final Color subGreen = const Color(0xFF4F6F52);
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isRequested
+                  ? Icons.cloud_sync_rounded
+                  : Icons.add_a_photo_rounded,
+              size: 100,
+              color: subGreen,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              isRequested ? '사진 촬영 요청 신호 송신 중' : '피보호자 안전 확인',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: subGreen,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              '피보호자의 스마트폰 카메라를 원격 작동시켜\n현재 공간 상황이나 안전 상태 사진을 요구합니다.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            const SizedBox(height: 40),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: mainDarkGreen,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 20,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              onPressed: () {
+                setState(() => isRequested = !isRequested);
+              },
+              child: const Text(
+                '실시간 사진 촬영',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class GuardianCalendarScreen extends StatefulWidget {
+  final Map<DateTime, List<String>> memoEvents;
+  const GuardianCalendarScreen({super.key, required this.memoEvents});
+  @override
+  State<GuardianCalendarScreen> createState() => _GuardianCalendarScreenState();
+}
+
+class _GuardianCalendarScreenState extends State<GuardianCalendarScreen> {
+  CalendarFormat _calendarFormat = CalendarFormat.month;
+  DateTime _focusedDay = DateTime.utc(2026, 5, 22);
+  DateTime? _selectedDay;
+
+  final TextEditingController _textController = TextEditingController();
+  TimeOfDay _selectedTime = const TimeOfDay(hour: 12, minute: 0);
+
+  DateTime _normalizeDate(DateTime date) =>
+      DateTime.utc(date.year, date.month, date.day);
+
+  void _showMemoDialog(DateTime selectedDay) {
+    final keyDay = _normalizeDate(selectedDay);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setPopupState) {
+            final currentMemos = widget.memoEvents[keyDay] ?? [];
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              title: Row(
+                children: [
+                  const Icon(
+                    Icons.edit_calendar_rounded,
+                    color: Color(0xFF4F6F52),
+                    size: 28,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${selectedDay.month}월 ${selectedDay.day}일 케어 스케줄',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A4D2E),
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 360,
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          icon: const Icon(
+                            Icons.access_time_filled_rounded,
+                            size: 18,
+                            color: Color(0xFF4F6F52),
+                          ),
+                          label: Text(
+                            '${_selectedTime.period == DayPeriod.am ? "오전" : "오후"} ${_selectedTime.hourOfPeriod.toString().padLeft(2, "0")}:${_selectedTime.minute.toString().padLeft(2, "0")}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF4F6F52),
+                              fontSize: 14,
+                            ),
+                          ),
+                          onPressed: () async {
+                            final TimeOfDay? time = await showTimePicker(
+                              context: context,
+                              initialTime: _selectedTime,
+                            );
+                            if (time != null)
+                              setPopupState(() => _selectedTime = time);
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _textController,
+                            decoration: const InputDecoration(
+                              hintText: '일정 입력...',
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.bookmark_add_rounded,
+                            color: Color(0xFF4F6F52),
+                            size: 28,
+                          ),
+                          onPressed: () {
+                            if (_textController.text.trim().isNotEmpty) {
+                              final periodStr =
+                                  _selectedTime.period == DayPeriod.am
+                                  ? "오전"
+                                  : "오후";
+                              final hourStr = _selectedTime.hourOfPeriod
+                                  .toString()
+                                  .padLeft(2, '0');
+                              final minStr = _selectedTime.minute
+                                  .toString()
+                                  .padLeft(2, '0');
+                              final fullScheduleText =
+                                  '$periodStr $hourStr:$minStr ${_textController.text.trim()}';
+                              setState(() {
+                                if (widget.memoEvents[keyDay] == null) {
+                                  widget.memoEvents[keyDay] = [];
+                                }
+                                widget.memoEvents[keyDay]!.add(
+                                  fullScheduleText,
+                                );
+                                widget.memoEvents[keyDay]!.sort();
+                              });
+                              setPopupState(() {});
+                              _textController.clear();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: currentMemos.isEmpty
+                          ? const Center(
+                              child: Text(
+                                '기록된 타임 스케줄이 없습니다.',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: currentMemos.length,
+                              itemBuilder: (context, index) {
+                                return Card(
+                                  color: const Color(0xFFF0F4F0),
+                                  elevation: 0,
+                                  shape: const StadiumBorder(),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12.0,
+                                    ),
+                                    child: ListTile(
+                                      dense: true,
+                                      leading: const Icon(
+                                        Icons.circle,
+                                        size: 8,
+                                        color: Color(0xFF4F6F52),
+                                      ),
+                                      title: Text(
+                                        currentMemos[index],
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      trailing: IconButton(
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          color: Colors.redAccent,
+                                          size: 20,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            widget.memoEvents[keyDay]!.removeAt(
+                                              index,
+                                            );
+                                          });
+                                          setPopupState(() {});
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text(
+                    '닫기',
+                    style: TextStyle(
+                      color: Color(0xFF4F6F52),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCustomDayCell(
+    DateTime day,
+    Color textColor, {
+    BoxDecoration? decoration,
+    List<dynamic>? events,
+  }) {
+    final dayEvents = events ?? widget.memoEvents[_normalizeDate(day)] ?? [];
+    return Container(
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: decoration,
+            child: Text(
+              '${day.day}',
+              style: TextStyle(
+                color: textColor,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          SizedBox(
+            height: 6,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: dayEvents
+                  .take(4)
+                  .map(
+                    (_) => Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                      child: const SizedBox(
+                        width: 5,
+                        height: 5,
+                        child: AspectRatio(
+                          aspectRatio: 1.0,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color(0xFF4F6F52),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(
+          child: TableCalendar(
+            firstDay: DateTime.utc(2020, 1, 1),
+            lastDay: DateTime.utc(2030, 12, 31),
+            focusedDay: _focusedDay,
+            calendarFormat: _calendarFormat,
+            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+            onDaySelected: (selectedDay, focusedDay) {
+              setState(() {
+                _selectedDay = selectedDay;
+                _focusedDay = focusedDay;
+              });
+              _showMemoDialog(selectedDay);
+            },
+            eventLoader: (day) => widget.memoEvents[_normalizeDate(day)] ?? [],
+            calendarBuilders: CalendarBuilders(
+              defaultBuilder: (context, day, focusedDay) =>
+                  _buildCustomDayCell(day, Colors.black87),
+              outsideBuilder: (context, day, focusedDay) =>
+                  const SizedBox.shrink(),
+              todayBuilder: (context, day, focusedDay) => _buildCustomDayCell(
+                day,
+                Colors.white,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF799F79),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              selectedBuilder: (context, day, focusedDay) =>
+                  _buildCustomDayCell(
+                    day,
+                    Colors.white,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF4F6F52),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              markerBuilder: (context, date, events) => const SizedBox.shrink(),
+            ),
+            calendarStyle: const CalendarStyle(outsideDaysVisible: false),
+            headerStyle: const HeaderStyle(
+              formatButtonVisible: false,
+              titleCentered: true,
+            ),
+            rowHeight: 68,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class GuardianNotificationScreen extends StatefulWidget {
+  const GuardianNotificationScreen({super.key});
+  @override
+  State<GuardianNotificationScreen> createState() =>
+      _GuardianNotificationScreenState();
+}
+
+class _GuardianNotificationScreenState
+    extends State<GuardianNotificationScreen> {
+  final List<Map<String, String>> _archivedHistory = [];
+  final List<Map<String, String>> _activeNotifications = [
+    {
+      'id': 'n1',
+      'dateGroup': '2026.05.22 (오늘)',
+      'title': '실시간 낙상 위험 감지',
+      'body': '방금 전 피보호자 방 안에서 순간적인 충격 흔적이 발생했습니다. 신속히 안부를 파악해 보세요.',
+      'type': 'danger',
+    },
+    {
+      'id': 'n2',
+      'dateGroup': '2026.05.22 (오늘)',
+      'title': 'AI 일일 정밀 요약 리포트',
+      'body': '최근 3일간 피보호자의 화장실 및 거실 활동량이 평소 대비 45% 급격하게 감소했습니다.',
+      'type': 'report',
+    },
+    {
+      'id': 'n3',
+      'dateGroup': '2026.05.21',
+      'title': 'AI 일일 정밀 요약 리포트',
+      'body': '식사 정량 섭취 패턴이 유지되고 정해진 동선 내에서 생활 중이십니다.',
+      'type': 'report',
+    },
+  ];
+
+  void _showArchiveRestoreDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.history_toggle_off_rounded, color: Color(0xFF4F6F52)),
+              SizedBox(width: 8),
+              Text(
+                '최근 3개월 알림 내역',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A4D2E),
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 300,
+            child: _archivedHistory.isEmpty
+                ? const Center(
+                    child: Text(
+                      '기록된 과거 이력이 없습니다.',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _archivedHistory.length,
+                    itemBuilder: (context, index) {
+                      final item = _archivedHistory[index];
+                      return Card(
+                        color: const Color(0xFFF0F4F0),
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          dense: true,
+                          title: Text(
+                            '[${item['dateGroup']}] ${item['title']}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1A4D2E),
+                            ),
+                          ),
+                          subtitle: Text(item['body'] ?? ''),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                '닫기',
+                style: TextStyle(
+                  color: Color(0xFF4F6F52),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Map<String, List<Map<String, String>>> groupedMap = {};
+    for (var noti in _activeNotifications) {
+      String key = noti['dateGroup'] ?? '기타';
+      if (!groupedMap.containsKey(key)) groupedMap[key] = [];
+      groupedMap[key]!.add(noti);
+    }
+    List<String> sortedDates = groupedMap.keys.toList();
+
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '알림 내역',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A4D2E),
+                ),
+              ),
+              InkWell(
+                onTap: _showArchiveRestoreDialog,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F3D6),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF4F6F52).withOpacity(0.3),
+                    ),
+                  ),
+                  child: const Text(
+                    '최근 3개월 보관 내역 조회',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF1A4D2E),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _activeNotifications.isEmpty
+              ? const Expanded(
+                  child: Center(
+                    child: Text(
+                      '보관된 알림 내역이 없습니다.',
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  ),
+                )
+              : Expanded(
+                  child: ListView.builder(
+                    itemCount: sortedDates.length,
+                    itemBuilder: (context, dateIdx) {
+                      String currentDateGroup = sortedDates[dateIdx];
+                      List<Map<String, String>> itemsInGroup =
+                          groupedMap[currentDateGroup] ?? [];
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12.0,
+                              horizontal: 4,
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.lens,
+                                  size: 8,
+                                  color: Color(0xFF4F6F52),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  currentDateGroup,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF4F6F52),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ...itemsInGroup.map((item) {
+                            final isDanger = item['type'] == 'danger';
+                            return Stack(
+                              children: [
+                                Card(
+                                  color: isDanger
+                                      ? const Color(0xFFFFF5F5)
+                                      : const Color(0xFFFFF9E6),
+                                  margin: const EdgeInsets.symmetric(
+                                    vertical: 6,
+                                  ),
+                                  // 💡 수정된 부분: side: BorderSide(...) 삭제하여 윤곽선 없앰
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  elevation: 0,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: ListTile(
+                                      leading: CircleAvatar(
+                                        backgroundColor: isDanger
+                                            ? Colors.red
+                                            : Colors.orange,
+                                        child: Icon(
+                                          isDanger
+                                              ? Icons.warning
+                                              : Icons.analytics,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      title: Text(
+                                        item['title'] ?? '',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: isDanger
+                                              ? Colors.red
+                                              : Colors.orange,
+                                          fontSize: 17,
+                                        ),
+                                      ),
+                                      subtitle: Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 4.0,
+                                        ),
+                                        child: Text(
+                                          item['body'] ?? '',
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.black87,
+                                            height: 1.3,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 14,
+                                  right: 14,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _archivedHistory.add(item);
+                                        _activeNotifications.removeWhere(
+                                          (element) =>
+                                              element['id'] == item['id'],
+                                        );
+                                      });
+                                    },
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      size: 20,
+                                      color: isDanger
+                                          ? Colors.red.withOpacity(0.5)
+                                          : Colors.orange.withOpacity(0.5),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+        ],
+      ),
+    );
+  }
+}
+
+class PatientMainHub extends StatefulWidget {
+  const PatientMainHub({super.key});
+  @override
+  State<PatientMainHub> createState() => _PatientMainHubState();
+}
+
+class _PatientMainHubState extends State<PatientMainHub> {
+  int _currentIndex = 0;
+  final Color subGreen = const Color(0xFF4F6F52);
+  final List<Widget> _tabs = [
+    const PatientStatusScreen(),
+    const SettingsScreen(isGuardian: false),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('릾 모프 케어')),
+      body: _tabs[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        selectedItemColor: subGreen,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.videocam_rounded),
+            label: '카메라',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_rounded),
+            label: '설정',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class PatientStatusScreen extends StatelessWidget {
+  const PatientStatusScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black87,
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.videocam_rounded, size: 80, color: Color(0xFFE8F3D6)),
+            SizedBox(height: 20),
+            Text(
+              '실시간 카메라 동작 중',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 10),
+            Text(
+              '보호자 앱과 연결되어 카메라가 활성화되었습니다.',
+              style: TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SettingsScreen extends StatefulWidget {
+  final bool isGuardian;
+  const SettingsScreen({super.key, required this.isGuardian});
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  final Color mainDarkGreen = const Color.fromARGB(255, 30, 82, 49);
+  final Color subGreen = const Color(0xFF4F6F52);
+
+  void _showAddWardDialog() {
+    final TextEditingController newWardCodeController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text(
+            '피보호자 추가 등록',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '추가할 피보호자의 6자리 연결 코드를\n입력해주세요.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: newWardCodeController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                maxLength: 6,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 6,
+                  color: subGreen,
+                ),
+                decoration: InputDecoration(
+                  hintText: '000000',
+                  counterText: '',
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: subGreen, width: 2),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.grey),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                '취소',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: subGreen),
+              onPressed: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('새로운 피보호자가 목록에 추가되었습니다.')),
+                );
+              },
+              child: const Text(
+                '등록하기',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '앱 설정',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: subGreen,
+            ),
+          ),
+          const SizedBox(height: 30),
+
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.text_fields_rounded, color: subGreen),
+                    const SizedBox(width: 10),
+                    Text(
+                      '전체 글자 크기 (${AppSettings.fontLevel}단계)',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                Slider(
+                  value: AppSettings.fontLevel.toDouble(),
+                  min: 1,
+                  max: 8,
+                  divisions: 7,
+                  activeColor: subGreen,
+                  thumbColor: subGreen,
+                  inactiveColor: const Color(0xFFE8F3D6),
+                  onChanged: (value) {
+                    setState(() {
+                      AppSettings.fontLevel = value.toInt();
+                    });
+                    GodoksaApp.of(context)?.updateFontScale();
+                  },
+                ),
+                const Text(
+                  '슬라이더를 움직여 앱 전체의 글자 크기를 조절하세요.',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 30),
+
+          if (widget.isGuardian) ...[
+            Text(
+              '관리 설정',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: subGreen,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: ListTile(
+                leading: Icon(Icons.person_add_alt_1_rounded, color: subGreen),
+                title: const Text(
+                  '새로운 피보호자 추가 등록',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('연결 코드를 입력하여 보호 대상을 추가합니다.'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: _showAddWardDialog,
+              ),
+            ),
+          ] else ...[
+            Text(
+              '내 정보',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: subGreen,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: ListTile(
+                leading: Icon(Icons.qr_code_2_rounded, color: subGreen),
+                title: const Text(
+                  '내 연결 코드 확인',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('보호자에게 알려줄 6자리 코드를 확인합니다.'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: Colors.white,
+                      title: const Center(
+                        child: Text(
+                          '내 연결 코드',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      content: Text(
+                        '523 891',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 5,
+                          color: subGreen,
+                        ),
+                      ),
+                      actions: [
+                        Center(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: subGreen,
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text(
+                              '닫기',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
