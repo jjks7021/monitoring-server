@@ -20,8 +20,9 @@ public class ActivityLog {
     @JoinColumn(name = "user_id")
     private User user; // 누구의 활동 기록인지
 
-    private Double xCoord; // MoveNet x 좌표
-    private Double yCoord; // MoveNet y 좌표
+    private Double xCoord;
+    private Double yCoord;
+    private Double zCoord;
 
     private String locationTag; // 'TOILET', 'ROOM' 등
 

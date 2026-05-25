@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:monitoring_app/services/api_service.dart';
+import 'package:monitoring_app/services/session_store.dart';
+import 'package:monitoring_app/screens/patient_monitor_screen.dart';
 
 void main() {
   runApp(const GodoksaApp());
@@ -365,12 +368,19 @@ class PatientConnectScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 30),
                     TextButton.icon(
-                      onPressed: () {
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          _createRoute(const PatientMainHub()),
-                          (route) => false,
-                        );
+                      onPressed: () async {
+                        const code = '523891';
+                        try {
+                          final user = await ApiService.instance.login(code);
+                          final hw = await SessionStore.getOrCreateHardwareId();
+                          await SessionStore.saveSession(loginCode: code, userName: user['name']?.toString() ?? '', role: user['role']?.toString() ?? 'PATIENT');
+                          await ApiService.instance.registerDevice(hw, code);
+                          if (!context.mounted) return;
+                          Navigator.pushAndRemoveUntil(context, _createRoute(const PatientMainHub()), (route) => false);
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('서버 연결 실패: $e')));
+                        }
                       },
                       icon: const Icon(
                         Icons.check_circle_outline,
@@ -463,12 +473,21 @@ class _GuardianConnectScreenState extends State<GuardianConnectScreen> {
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              onPressed: () {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  _createRoute(const GuardianMainHub()),
-                  (route) => false,
-                );
+              onPressed: () async {
+                final code = _codeController.text.trim();
+                if (code.length != 6) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('6자리 코드를 입력하세요')));
+                  return;
+                }
+                try {
+                  final user = await ApiService.instance.login(code);
+                  await SessionStore.saveSession(loginCode: code, userName: user['name']?.toString() ?? '', role: user['role']?.toString() ?? 'WARD');
+                  if (!context.mounted) return;
+                  Navigator.pushAndRemoveUntil(context, _createRoute(const GuardianMainHub()), (route) => false);
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('연결 실패: $e')));
+                }
               },
               child: const Text(
                 '연결하기',
@@ -1238,7 +1257,7 @@ class _PatientMainHubState extends State<PatientMainHub> {
   int _currentIndex = 0;
   final Color subGreen = const Color(0xFF4F6F52);
   final List<Widget> _tabs = [
-    const PatientStatusScreen(),
+    const PatientMonitorScreen(),
     const SettingsScreen(isGuardian: false),
   ];
 
