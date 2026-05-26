@@ -37,7 +37,7 @@ class _GodoksaAppState extends State<GodoksaApp> {
     const Color subGreen = Color(0xFF4F6F52);
 
     return MaterialApp(
-      title: '모프 케어',
+      title: '하루신호',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -137,7 +137,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 15),
             const Text(
-              '모프 케어',
+              '하루 신호',
               style: TextStyle(
                 fontFamily: 'YPairingFont', // 💡 Y페어링체 적용
                 fontSize: 48.0,
@@ -178,7 +178,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('릾 모프 케어')),
+      appBar: AppBar(title: const Text('릾 하루신호')),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
         child: Column(
@@ -321,7 +321,7 @@ class PatientConnectScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     const Color subGreen = Color(0xFF4F6F52);
     return Scaffold(
-      appBar: AppBar(title: const Text('릾 모프 케어')),
+      appBar: AppBar(title: const Text('릾 하루신호')),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32.0),
@@ -373,13 +373,23 @@ class PatientConnectScreen extends StatelessWidget {
                         try {
                           final user = await ApiService.instance.login(code);
                           final hw = await SessionStore.getOrCreateHardwareId();
-                          await SessionStore.saveSession(loginCode: code, userName: user['name']?.toString() ?? '', role: user['role']?.toString() ?? 'PATIENT');
+                          await SessionStore.saveSession(
+                            loginCode: code,
+                            userName: user['name']?.toString() ?? '',
+                            role: user['role']?.toString() ?? 'PATIENT',
+                          );
                           await ApiService.instance.registerDevice(hw, code);
                           if (!context.mounted) return;
-                          Navigator.pushAndRemoveUntil(context, _createRoute(const PatientMainHub()), (route) => false);
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            _createRoute(const PatientMainHub()),
+                            (route) => false,
+                          );
                         } catch (e) {
                           if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('서버 연결 실패: $e')));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('서버 연결 실패: $e')),
+                          );
                         }
                       },
                       icon: const Icon(
@@ -421,7 +431,7 @@ class _GuardianConnectScreenState extends State<GuardianConnectScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('릾 모프 케어')),
+      appBar: AppBar(title: const Text('릾 하루신호')),
       body: Padding(
         padding: const EdgeInsets.all(32.0),
         child: Column(
@@ -476,17 +486,29 @@ class _GuardianConnectScreenState extends State<GuardianConnectScreen> {
               onPressed: () async {
                 final code = _codeController.text.trim();
                 if (code.length != 6) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('6자리 코드를 입력하세요')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('6자리 코드를 입력하세요')),
+                  );
                   return;
                 }
                 try {
                   final user = await ApiService.instance.login(code);
-                  await SessionStore.saveSession(loginCode: code, userName: user['name']?.toString() ?? '', role: user['role']?.toString() ?? 'WARD');
+                  await SessionStore.saveSession(
+                    loginCode: code,
+                    userName: user['name']?.toString() ?? '',
+                    role: user['role']?.toString() ?? 'WARD',
+                  );
                   if (!context.mounted) return;
-                  Navigator.pushAndRemoveUntil(context, _createRoute(const GuardianMainHub()), (route) => false);
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    _createRoute(const GuardianMainHub()),
+                    (route) => false,
+                  );
                 } catch (e) {
                   if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('연결 실패: $e')));
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('연결 실패: $e')));
                 }
               },
               child: const Text(
@@ -531,7 +553,7 @@ class _GuardianMainHubState extends State<GuardianMainHub> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('릾 모프 케어')),
+      appBar: AppBar(title: const Text('릾 하루신호')),
       body: _tabs[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -1264,7 +1286,7 @@ class _PatientMainHubState extends State<PatientMainHub> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('릾 모프 케어')),
+      appBar: AppBar(title: const Text('릾 하루신호')),
       body: _tabs[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
