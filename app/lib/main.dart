@@ -642,6 +642,7 @@ class _GuardianMainHubState extends State<GuardianMainHub> {
   final Map<DateTime, List<String>> _sharedMemoEvents = {};
   late final List<Widget> _tabs;
   final Color subGreen = const Color(0xFF4F6F52);
+  StreamSubscription<Map<String, dynamic>>? _crisisSub;
 
   @override
   void initState() {
@@ -652,10 +653,30 @@ class _GuardianMainHubState extends State<GuardianMainHub> {
       const GuardianNotificationScreen(),
       const SettingsScreen(isGuardian: true),
     ];
+    _initGuardianRealtime();
+  }
+
+  Future<void> _initGuardianRealtime() async {
+    final loginCode = await SessionStore.loginCode();
+    if (loginCode == null || !mounted) return;
+    RiskStreamService.instance.connect(loginCode);
+    _crisisSub = RiskStreamService.instance.crisisAlerts.listen((data) {
+      if (!mounted) return;
+      final desc = data['description']?.toString() ?? '위험 상황이 감지되었습니다.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🚨 $desc'),
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      setState(() => _currentIndex = 2);
+    });
   }
 
   @override
   void dispose() {
+    _crisisSub?.cancel();
     RiskStreamService.instance.disconnect();
     super.dispose();
   }

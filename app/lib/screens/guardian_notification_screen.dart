@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'dart:async';
+
 import '../services/api_service.dart';
+import '../services/risk_stream_service.dart';
 import '../services/session_store.dart';
 
 class GuardianNotificationScreen extends StatefulWidget {
@@ -17,11 +20,19 @@ class _GuardianNotificationScreenState extends State<GuardianNotificationScreen>
   List<CrisisItem> _active = [];
   bool _loading = true;
   String? _error;
+  StreamSubscription<Map<String, dynamic>>? _crisisSub;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _crisisSub = RiskStreamService.instance.crisisAlerts.listen((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _crisisSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {

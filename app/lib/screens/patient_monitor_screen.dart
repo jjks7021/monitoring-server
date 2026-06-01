@@ -31,6 +31,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
   String _coordSource = '';
   String? _error;
   int _sendTick = 0;
+  double _aiAlertThresholdPercent = 60;
 
   @override
   void initState() {
@@ -39,13 +40,14 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
       _detector = PoseDetector(options: PoseDetectorOptions());
     }
     _init();
+    _loadAlertConfig();
     _initPhotoListener();
     // 첫 전송은 즉시, 이후 10초마다
     Future.microtask(_captureAndSend);
     _timer = Timer.periodic(const Duration(seconds: 5), (_) => _captureAndSend());
   }
 
-  /// 웹·포즈 미검출 시: 시간에 따라 변하는 좌표 (10초 주기와 겹쳐도 매번 달라짐)
+  /// 웹·포즈 미검출 시: 시간에 따라 변하는 좌표
   ({double x, double y, double z}) _simulatedCoordinates() {
     _sendTick++;
     final t = DateTime.now().millisecondsSinceEpoch / 1000.0 + _sendTick * 0.7;
@@ -66,6 +68,16 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
       if (!name.contains('virtual') && !name.contains('fake')) return c;
     }
     return cameras.first;
+  }
+
+  Future<void> _loadAlertConfig() async {
+    try {
+      final cfg = await ApiService.instance.getAlertConfig();
+      final pct = (cfg['aiCrisisThresholdPercent'] as num?)?.toDouble();
+      if (pct != null && mounted) {
+        setState(() => _aiAlertThresholdPercent = pct);
+      }
+    } catch (_) {}
   }
 
   Future<void> _initPhotoListener() async {
@@ -201,7 +213,6 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
         }
       }
 
-      // 포즈 실패·웹·카메라 없음 → 매 전송마다 다른 좌표
       if (source != '포즈 분석 (ML Kit)') {
         final sim = _simulatedCoordinates();
         x = sim.x;
@@ -219,6 +230,8 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
         currentDuration: _durationMin,
       );
       if (mounted) {
+        final pct = result.probability * 100;
+        final crossed = pct >= _aiAlertThresholdPercent;
         setState(() {
           _coords =
               'x:${x.toStringAsFixed(3)} y:${y.toStringAsFixed(3)} z:${z.toStringAsFixed(3)}';
@@ -227,6 +240,16 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
           _summary = result.summary;
           _error = null;
         });
+        if (crossed) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '고독사 위험도 ${pct.toStringAsFixed(0)}% → 보호자 자동 알림 조건 충족',
+              ),
+              backgroundColor: Colors.red.shade700,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -382,9 +405,52 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
                 padding: EdgeInsets.only(top: 4),
                 child: LinearProgressIndicator(minHeight: 2),
               ),
+            const SizedBox(height: 6),
+            Text(
+              '고독사 위험도가 ${_aiAlertThresholdPercent.toStringAsFixed(0)}% 이상이면 '
+              '좌표 전송 시 보호자 알림이 자동으로 갑니다.',
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: _busy ? null : _triggerTestCrisis,
+              icon: const Icon(Icons.bug_report_outlined, size: 18),
+              label: const Text(
+                '알림 경로만 수동 테스트 (AI 위험도 무관)',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
           ],
         ),
       ),
     ]);
+  }
+
+  Future<void> _triggerTestCrisis() async {
+    final loginCode = await SessionStore.loginCode();
+    if (loginCode == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('연결 코드가 없습니다. 모니터링 시작을 먼저 해 주세요.')),
+      );
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await ApiService.instance.triggerTestCrisis(loginCode);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('수동 테스트 알림만 전송했습니다. 실제 AI 자동 알림과는 별개입니다.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('전송 실패: ${ApiService.formatError(e)}')),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 }

@@ -37,6 +37,19 @@ class ApiService {
     return Map<String, dynamic>.from(res.data as Map);
   }
 
+  Future<Map<String, dynamic>> getAlertConfig() async {
+    final res = await _dio.get('/api/patient/alert-config');
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  /// 테스트: Crisis 발생 → 보호자 알림(WebSocket + /api/crisis/active) — AI 경로와 무관
+  Future<void> triggerTestCrisis(String loginCode) async {
+    await _dio.post(
+      '/api/patient/trigger-test-crisis',
+      data: {'loginCode': loginCode},
+    );
+  }
+
   Future<void> registerDevice(String hardwareId, String loginCode) async {
     await _dio.post('/api/devices/register', data: {
       'hardwareId': hardwareId,
@@ -244,6 +257,10 @@ class CrisisItem {
         return '화장실 체류 시간 이상';
       case 'LETHARGY':
         return '활동량 급감 감지';
+      case 'TEST_MANUAL':
+        return '테스트 위험 알림';
+      case 'AI_HIGH_RISK':
+        return 'AI 고독사 위험 경고';
       default:
         return '위험 상황 감지';
     }

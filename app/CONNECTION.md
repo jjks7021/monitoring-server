@@ -21,9 +21,29 @@
 
 ## Flutter 실행
 
-```powershell
+기본 API 주소는 플랫폼별로 자동 설정됩니다. 별도 `--dart-define` 없이 실행해도 됩니다.
+
+| 환경 | 기본 API |
+|------|----------|
+| macOS / iOS 시뮬레이터 / Windows / Web | `http://127.0.0.1:8080` |
+| Android 에뮬레이터 | `http://10.0.2.2:8080` |
+| Android 실기기 | `http://<PC_LAN_IP>:8080` (`--dart-define` 필요) |
+
+macOS:
+
+```bash
 cd app
+flutter run -d macos
+```
+
+Android 에뮬레이터 (명시적 지정이 필요할 때):
+
+```bash
 flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8080
 ```
 
-Chrome/Windows: `--dart-define=API_BASE_URL=http://localhost:8080`
+## 백엔드 실행 위치
+
+IntelliJ / Gradle Run은 **저장소 루트** `src/main/java/.../MonitoringServerApplication` 을 사용하세요.
+
+`app/src/main/java` 아래 Spring Boot는 구버전(`/api/users/patient/connect` 없음)이므로 피보호자 코드 발급이 되지 않습니다.

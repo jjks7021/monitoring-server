@@ -22,6 +22,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   String? _error;
   StreamSubscription<Map<String, dynamic>>? _riskSub;
   StreamSubscription<Map<String, dynamic>>? _photoReadySub;
+  StreamSubscription<Map<String, dynamic>>? _crisisSub;
 
   final Color mainDarkGreen = const Color.fromARGB(255, 30, 82, 49);
   final Color subGreen = const Color(0xFF4F6F52);
@@ -54,6 +55,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     _photoReadySub = RiskStreamService.instance.photoReady.listen((_) {
       _fetchAndShowEmergencyPhoto();
     });
+    _crisisSub = RiskStreamService.instance.crisisAlerts.listen((_) => _load());
     try {
       final crises = await ApiService.instance.getActiveCrises(loginCode: loginCode);
       final snapshot = await ApiService.instance.getLatestRisk(loginCode);
@@ -173,6 +175,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   void dispose() {
     _riskSub?.cancel();
     _photoReadySub?.cancel();
+    _crisisSub?.cancel();
     super.dispose();
   }
 
