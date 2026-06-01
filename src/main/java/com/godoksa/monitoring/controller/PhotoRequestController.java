@@ -1,7 +1,9 @@
 package com.godoksa.monitoring.controller;
 
 import com.godoksa.monitoring.dto.PhotoRequestEvent;
+import com.godoksa.monitoring.entity.Crisis;
 import com.godoksa.monitoring.entity.User;
+import com.godoksa.monitoring.repository.CrisisRepository;
 import com.godoksa.monitoring.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,12 +18,21 @@ import java.util.Map;
 public class PhotoRequestController {
 
     private final UserRepository userRepository;
+    private final CrisisRepository crisisRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     @PostMapping("/photo-request/{loginCode}")
     public ResponseEntity<?> requestPhoto(@PathVariable String loginCode) {
         User user = userRepository.findByLoginCode(loginCode)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자 코드입니다."));
+
+        boolean hasCrisis = !crisisRepository
+                .findByUser_LoginCodeAndStatus(loginCode, Crisis.CrisisStatus.CRISIS)
+                .isEmpty();
+        if (!hasCrisis) {
+            return ResponseEntity.status(403).body(
+                    Map.of("error", "긴급 위험 상황이 감지된 경우에만 사진 요청이 가능합니다."));
+        }
 
         PhotoRequestEvent event = new PhotoRequestEvent(
                 "PHOTO_REQUEST",

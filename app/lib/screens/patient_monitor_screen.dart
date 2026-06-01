@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -74,10 +75,20 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
     _photoSub = RiskStreamService.instance.photoRequests.listen((_) async {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('보호자가 안전 확인 사진 촬영을 요청했습니다.')),
+        const SnackBar(content: Text('긴급 상황: 보호자 사진 요청을 수신했습니다.')),
       );
-      await _captureAndSend();
+      await _respondToGuardianPhotoRequest();
     });
+  }
+
+  Future<void> _deleteCaptureFile(String? path) async {
+    if (path == null || path.isEmpty || kIsWeb) return;
+    try {
+      final file = File(path);
+      if (await file.exists()) await file.delete();
+    } catch (e) {
+      debugPrint('임시 촬영 파일 삭제 실패: $e');
+    }
   }
 
   Future<void> _init() async {
@@ -163,11 +174,13 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
           _camera != null &&
           _camera!.value.isInitialized;
 
+      String? capturePath;
       if (canUsePoseDetection) {
         try {
           final file = await _camera!
               .takePicture()
               .timeout(const Duration(seconds: 8));
+          capturePath = file.path;
           final poses = await _detector!
               .processImage(InputImage.fromFilePath(file.path))
               .timeout(const Duration(seconds: 8));
@@ -183,6 +196,8 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
           }
         } on TimeoutException {
           // fall through to simulation
+        } finally {
+          await _deleteCaptureFile(capturePath);
         }
       }
 
@@ -224,6 +239,51 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
     } finally {
       _busy = false;
     }
+  }
+
+  /// 긴급 시 보호자 열람용 1회 사진 업로드 후 로컬 파일 즉시 삭제
+  Future<void> _respondToGuardianPhotoRequest() async {
+    if (_busy) return;
+    final loginCode = await SessionStore.loginCode();
+    final hardwareId = await SessionStore.getOrCreateHardwareId();
+    if (loginCode == null) return;
+    if (_camera == null || !_camera!.value.isInitialized) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('카메라가 준비되지 않아 사진을 전송할 수 없습니다.')),
+        );
+      }
+      return;
+    }
+
+    _busy = true;
+    String? capturePath;
+    try {
+      final file = await _camera!.takePicture().timeout(const Duration(seconds: 8));
+      capturePath = file.path;
+
+      await ApiService.instance.uploadEmergencyPhoto(
+        loginCode: loginCode,
+        hardwareId: hardwareId,
+        filePath: file.path,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('긴급 사진을 보호자에게 전달했습니다. (원본은 기기에서 삭제됨)')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('긴급 사진 전송 실패: ${ApiService.formatError(e)}')),
+        );
+      }
+    } finally {
+      await _deleteCaptureFile(capturePath);
+      _busy = false;
+    }
+    await _captureAndSend();
   }
 
   @override

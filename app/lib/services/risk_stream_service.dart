@@ -13,9 +13,11 @@ class RiskStreamService {
   StompClient? _client;
   final _riskController = StreamController<Map<String, dynamic>>.broadcast();
   final _photoController = StreamController<Map<String, dynamic>>.broadcast();
+  final _photoReadyController = StreamController<Map<String, dynamic>>.broadcast();
 
   Stream<Map<String, dynamic>> get riskUpdates => _riskController.stream;
   Stream<Map<String, dynamic>> get photoRequests => _photoController.stream;
+  Stream<Map<String, dynamic>> get photoReady => _photoReadyController.stream;
 
   bool get isConnected => _client?.connected ?? false;
 
@@ -33,6 +35,10 @@ class RiskStreamService {
           _client?.subscribe(
             destination: '/topic/photo-request/$loginCode',
             callback: (frame) => _emit(frame, _photoController),
+          );
+          _client?.subscribe(
+            destination: '/topic/photo-ready/$loginCode',
+            callback: (frame) => _emit(frame, _photoReadyController),
           );
         },
         onWebSocketError: (_) {},
@@ -58,5 +64,6 @@ class RiskStreamService {
     disconnect();
     _riskController.close();
     _photoController.close();
+    _photoReadyController.close();
   }
 }

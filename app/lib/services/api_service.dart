@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import '../config/api_config.dart';
 
@@ -133,6 +135,44 @@ class ApiService {
 
   Future<void> requestPhoto(String loginCode) async {
     await _dio.post('/api/guardian/photo-request/$loginCode');
+  }
+
+  Future<void> uploadEmergencyPhoto({
+    required String loginCode,
+    required String hardwareId,
+    required String filePath,
+  }) async {
+    final formData = FormData.fromMap({
+      'loginCode': loginCode,
+      'hardwareId': hardwareId,
+      'image': await MultipartFile.fromFile(
+        filePath,
+        filename: 'emergency.jpg',
+      ),
+    });
+    await _dio.post(
+      '/api/devices/emergency-photo',
+      data: formData,
+      options: Options(contentType: 'multipart/form-data'),
+    );
+  }
+
+  /// 긴급 사진 1회 열람 (서버 메모리에서 즉시 삭제됨)
+  Future<Uint8List?> fetchEmergencyPhoto(String loginCode) async {
+    try {
+      final res = await _dio.get<List<int>>(
+        '/api/guardian/emergency-photo/$loginCode',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final data = res.data;
+      if (data == null || data.isEmpty) return null;
+      return Uint8List.fromList(data);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 403) {
+        return null;
+      }
+      rethrow;
+    }
   }
 }
 
