@@ -29,7 +29,6 @@ out/
 src/main/resources/application.yml
 
 ngrok.exe
-src/main/resources/application.properties
 
 app/.dart_tool/
 
