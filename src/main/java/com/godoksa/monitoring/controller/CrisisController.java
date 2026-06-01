@@ -1,5 +1,6 @@
 package com.godoksa.monitoring.controller;
 
+import com.godoksa.monitoring.dto.CrisisResponse;
 import com.godoksa.monitoring.entity.Crisis;
 import com.godoksa.monitoring.repository.CrisisRepository;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/crisis")
@@ -21,10 +23,15 @@ public class CrisisController {
      * 1. 현재 발생한 실시간 위험 상황 목록 조회 API (관제 대시보드 / 찬우님 보호자 앱 연동용)
      */
     @GetMapping("/active")
-    public ResponseEntity<List<Crisis>> getActiveCrises() {
-        // 아직 해결되지 않은(CRISIS 상태인) 노인 위험 데이터들을 싹 긁어옴
-        List<Crisis> activeCrises = crisisRepository.findByStatus(Crisis.CrisisStatus.CRISIS);
-        return ResponseEntity.ok(activeCrises);
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<CrisisResponse>> getActiveCrises(
+            @RequestParam(required = false) String loginCode) {
+        List<Crisis> activeCrises = loginCode != null && !loginCode.isBlank()
+                ? crisisRepository.findByUser_LoginCodeAndStatus(loginCode, Crisis.CrisisStatus.CRISIS)
+                : crisisRepository.findByStatus(Crisis.CrisisStatus.CRISIS);
+        return ResponseEntity.ok(activeCrises.stream()
+                .map(CrisisResponse::from)
+                .collect(Collectors.toList()));
     }
 
     /**

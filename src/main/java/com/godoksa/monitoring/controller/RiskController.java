@@ -1,6 +1,6 @@
 package com.godoksa.monitoring.controller;
 
-import com.godoksa.monitoring.entity.RiskAssessment;
+import com.godoksa.monitoring.dto.RiskAssessmentResponse;
 import com.godoksa.monitoring.entity.User;
 import com.godoksa.monitoring.repository.RiskAssessmentRepository;
 import com.godoksa.monitoring.repository.UserRepository;
@@ -22,16 +22,16 @@ public class RiskController {
     private final UserRepository userRepository;
 
     @GetMapping("/latest/{loginCode}")
-    public ResponseEntity<RiskAssessment> getLatestRisk(@PathVariable String loginCode) {
+    public ResponseEntity<RiskAssessmentResponse> getLatestRisk(@PathVariable String loginCode) {
         User user = userRepository.findByLoginCode(loginCode)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자 코드입니다."));
 
-        List<RiskAssessment> assessments = riskAssessmentRepository.findByUserOrderByCreatedAtDesc(user);
+        var assessments = riskAssessmentRepository.findByUserOrderByCreatedAtDesc(user);
 
         if (assessments.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
-        return ResponseEntity.ok(assessments.get(0));
+        return ResponseEntity.ok(RiskAssessmentResponse.from(assessments.get(0)));
     }
 }

@@ -6,6 +6,7 @@ class SessionStore {
   static const _keyHardwareId = 'hardwareId';
   static const _keyUserName = 'userName';
   static const _keyRole = 'role';
+  static const _keyIsGuardian = 'isGuardian';
 
   static Future<String> getOrCreateHardwareId() async {
     final prefs = await SharedPreferences.getInstance();
@@ -21,12 +22,27 @@ class SessionStore {
     required String loginCode,
     required String userName,
     required String role,
+    bool isGuardian = false,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyLoginCode, loginCode);
     await prefs.setString(_keyUserName, userName);
     await prefs.setString(_keyRole, role);
+    await prefs.setBool(_keyIsGuardian, isGuardian);
     await getOrCreateHardwareId();
+  }
+
+  static Future<void> clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyLoginCode);
+    await prefs.remove(_keyUserName);
+    await prefs.remove(_keyRole);
+    await prefs.remove(_keyIsGuardian);
+  }
+
+  static Future<bool> hasSession() async {
+    final code = await loginCode();
+    return code != null && code.isNotEmpty;
   }
 
   static Future<String?> loginCode() async =>
@@ -37,4 +53,7 @@ class SessionStore {
 
   static Future<String?> role() async =>
       (await SharedPreferences.getInstance()).getString(_keyRole);
+
+  static Future<bool> isGuardian() async =>
+      (await SharedPreferences.getInstance()).getBool(_keyIsGuardian) ?? false;
 }

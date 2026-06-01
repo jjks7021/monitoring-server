@@ -1,9 +1,13 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:monitoring_app/services/api_service.dart';
 import 'package:monitoring_app/services/session_store.dart';
+import 'package:monitoring_app/config/api_config.dart';
+import 'package:monitoring_app/screens/guardian_home_screen.dart';
+import 'package:monitoring_app/screens/guardian_notification_screen.dart';
 import 'package:monitoring_app/screens/patient_monitor_screen.dart';
+import 'package:monitoring_app/services/risk_stream_service.dart';
 
 void main() {
   runApp(const GodoksaApp());
@@ -100,11 +104,22 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Timer(const Duration(milliseconds: 2000), () {
-      Navigator.pushReplacement(
-        context,
-        _createRoute(const RoleSelectionScreen()),
-      );
+    Timer(const Duration(milliseconds: 2000), () async {
+      if (!mounted) return;
+      if (await SessionStore.hasSession()) {
+        final isGuardian = await SessionStore.isGuardian();
+        Navigator.pushReplacement(
+          context,
+          _createRoute(
+            isGuardian ? const GuardianMainHub() : const PatientMainHub(),
+          ),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          _createRoute(const RoleSelectionScreen()),
+        );
+      }
     });
   }
 
@@ -315,8 +330,44 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 }
 
 // 피보호자 모드
-class PatientConnectScreen extends StatelessWidget {
+class PatientConnectScreen extends StatefulWidget {
   const PatientConnectScreen({super.key});
+  @override
+  State<PatientConnectScreen> createState() => _PatientConnectScreenState();
+}
+
+class _PatientConnectScreenState extends State<PatientConnectScreen> {
+  bool _loading = false;
+  final String _code = ApiConfig.demoPatientCode;
+
+  Future<void> _startMonitoring() async {
+    setState(() => _loading = true);
+    try {
+      final user = await ApiService.instance.login(_code);
+      final hw = await SessionStore.getOrCreateHardwareId();
+      await SessionStore.saveSession(
+        loginCode: _code,
+        userName: user['name']?.toString() ?? '',
+        role: user['role']?.toString() ?? 'PATIENT',
+        isGuardian: false,
+      );
+      await ApiService.instance.registerDevice(hw, _code);
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        _createRoute(const PatientMainHub()),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('서버 연결 실패: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color subGreen = Color(0xFF4F6F52);
@@ -331,9 +382,10 @@ class PatientConnectScreen extends StatelessWidget {
               const Icon(Icons.lock_open_rounded, size: 80, color: subGreen),
               const SizedBox(height: 20),
               const Text(
-                '보호자 연결 대기 중',
+                '보호자에게 아래 코드를 알려주세요',
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 26,
+                  fontSize: 22,
                   color: subGreen,
                   fontWeight: FontWeight.bold,
                 ),
@@ -357,9 +409,9 @@ class PatientConnectScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      '523 891',
-                      style: TextStyle(
+                    Text(
+                      ApiConfig.formatLoginCode(_code),
+                      style: const TextStyle(
                         fontSize: 50,
                         color: subGreen,
                         letterSpacing: 4,
@@ -367,41 +419,28 @@ class PatientConnectScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 30),
-                    TextButton.icon(
-                      onPressed: () async {
-                        const code = '523891';
-                        try {
-                          final user = await ApiService.instance.login(code);
-                          final hw = await SessionStore.getOrCreateHardwareId();
-                          await SessionStore.saveSession(
-                            loginCode: code,
-                            userName: user['name']?.toString() ?? '',
-                            role: user['role']?.toString() ?? 'PATIENT',
-                          );
-                          await ApiService.instance.registerDevice(hw, code);
-                          if (!context.mounted) return;
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            _createRoute(const PatientMainHub()),
-                            (route) => false,
-                          );
-                        } catch (e) {
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('서버 연결 실패: $e')),
-                          );
-                        }
-                      },
-                      icon: const Icon(
-                        Icons.check_circle_outline,
-                        color: subGreen,
-                      ),
-                      label: const Text(
-                        '보호자 연결 수락 시뮬레이션', // 나중에 이 부분 없애야함!!!!!
-                        style: TextStyle(
-                          color: subGreen,
+                    ElevatedButton.icon(
+                      onPressed: _loading ? null : _startMonitoring,
+                      icon: _loading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.play_arrow_rounded),
+                      label: Text(
+                        _loading ? '연결 중...' : '모니터링 시작',
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: subGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 14,
                         ),
                       ),
                     ),
@@ -496,7 +535,8 @@ class _GuardianConnectScreenState extends State<GuardianConnectScreen> {
                   await SessionStore.saveSession(
                     loginCode: code,
                     userName: user['name']?.toString() ?? '',
-                    role: user['role']?.toString() ?? 'WARD',
+                    role: user['role']?.toString() ?? 'PATIENT',
+                    isGuardian: true,
                   );
                   if (!context.mounted) return;
                   Navigator.pushAndRemoveUntil(
@@ -551,6 +591,12 @@ class _GuardianMainHubState extends State<GuardianMainHub> {
   }
 
   @override
+  void dispose() {
+    RiskStreamService.instance.disconnect();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('릾 하루신호')),
@@ -576,79 +622,6 @@ class _GuardianMainHubState extends State<GuardianMainHub> {
             label: '설정',
           ),
         ],
-      ),
-    );
-  }
-}
-
-// 🏠 보호자 탭 [홈]
-class GuardianHomeScreen extends StatefulWidget {
-  const GuardianHomeScreen({super.key});
-  @override
-  State<GuardianHomeScreen> createState() => _GuardianHomeScreenState();
-}
-
-class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
-  bool isRequested = false;
-  final Color mainDarkGreen = const Color.fromARGB(255, 30, 82, 49);
-  final Color subGreen = const Color(0xFF4F6F52);
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isRequested
-                  ? Icons.cloud_sync_rounded
-                  : Icons.add_a_photo_rounded,
-              size: 100,
-              color: subGreen,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              isRequested ? '사진 촬영 요청 신호 송신 중' : '피보호자 안전 확인',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: subGreen,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              '피보호자의 스마트폰 카메라를 원격 작동시켜\n현재 공간 상황이나 안전 상태 사진을 요구합니다.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            const SizedBox(height: 40),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: mainDarkGreen,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 20,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              onPressed: () {
-                setState(() => isRequested = !isRequested);
-              },
-              child: const Text(
-                '실시간 사진 촬영',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -973,302 +946,6 @@ class _GuardianCalendarScreenState extends State<GuardianCalendarScreen> {
   }
 }
 
-class GuardianNotificationScreen extends StatefulWidget {
-  const GuardianNotificationScreen({super.key});
-  @override
-  State<GuardianNotificationScreen> createState() =>
-      _GuardianNotificationScreenState();
-}
-
-class _GuardianNotificationScreenState
-    extends State<GuardianNotificationScreen> {
-  final List<Map<String, String>> _archivedHistory = [];
-  final List<Map<String, String>> _activeNotifications = [
-    {
-      'id': 'n1',
-      'dateGroup': '2026.05.22 (오늘)',
-      'title': '실시간 낙상 위험 감지',
-      'body': '방금 전 피보호자 방 안에서 순간적인 충격 흔적이 발생했습니다. 신속히 안부를 파악해 보세요.',
-      'type': 'danger',
-    },
-    {
-      'id': 'n2',
-      'dateGroup': '2026.05.22 (오늘)',
-      'title': 'AI 일일 정밀 요약 리포트',
-      'body': '최근 3일간 피보호자의 화장실 및 거실 활동량이 평소 대비 45% 급격하게 감소했습니다.',
-      'type': 'report',
-    },
-    {
-      'id': 'n3',
-      'dateGroup': '2026.05.21',
-      'title': 'AI 일일 정밀 요약 리포트',
-      'body': '식사 정량 섭취 패턴이 유지되고 정해진 동선 내에서 생활 중이십니다.',
-      'type': 'report',
-    },
-  ];
-
-  void _showArchiveRestoreDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-          title: const Row(
-            children: [
-              Icon(Icons.history_toggle_off_rounded, color: Color(0xFF4F6F52)),
-              SizedBox(width: 8),
-              Text(
-                '최근 3개월 알림 내역',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A4D2E),
-                ),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 300,
-            child: _archivedHistory.isEmpty
-                ? const Center(
-                    child: Text(
-                      '기록된 과거 이력이 없습니다.',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _archivedHistory.length,
-                    itemBuilder: (context, index) {
-                      final item = _archivedHistory[index];
-                      return Card(
-                        color: const Color(0xFFF0F4F0),
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        child: ListTile(
-                          dense: true,
-                          title: Text(
-                            '[${item['dateGroup']}] ${item['title']}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1A4D2E),
-                            ),
-                          ),
-                          subtitle: Text(item['body'] ?? ''),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                '닫기',
-                style: TextStyle(
-                  color: Color(0xFF4F6F52),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    Map<String, List<Map<String, String>>> groupedMap = {};
-    for (var noti in _activeNotifications) {
-      String key = noti['dateGroup'] ?? '기타';
-      if (!groupedMap.containsKey(key)) groupedMap[key] = [];
-      groupedMap[key]!.add(noti);
-    }
-    List<String> sortedDates = groupedMap.keys.toList();
-
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                '알림 내역',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A4D2E),
-                ),
-              ),
-              InkWell(
-                onTap: _showArchiveRestoreDialog,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F3D6),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFF4F6F52).withOpacity(0.3),
-                    ),
-                  ),
-                  child: const Text(
-                    '최근 3개월 보관 내역 조회',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF1A4D2E),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _activeNotifications.isEmpty
-              ? const Expanded(
-                  child: Center(
-                    child: Text(
-                      '보관된 알림 내역이 없습니다.',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
-                  ),
-                )
-              : Expanded(
-                  child: ListView.builder(
-                    itemCount: sortedDates.length,
-                    itemBuilder: (context, dateIdx) {
-                      String currentDateGroup = sortedDates[dateIdx];
-                      List<Map<String, String>> itemsInGroup =
-                          groupedMap[currentDateGroup] ?? [];
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 12.0,
-                              horizontal: 4,
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.lens,
-                                  size: 8,
-                                  color: Color(0xFF4F6F52),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  currentDateGroup,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF4F6F52),
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          ...itemsInGroup.map((item) {
-                            final isDanger = item['type'] == 'danger';
-                            return Stack(
-                              children: [
-                                Card(
-                                  color: isDanger
-                                      ? const Color(0xFFFFF5F5)
-                                      : const Color(0xFFFFF9E6),
-                                  margin: const EdgeInsets.symmetric(
-                                    vertical: 6,
-                                  ),
-                                  // 💡 수정된 부분: side: BorderSide(...) 삭제하여 윤곽선 없앰
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  elevation: 0,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: ListTile(
-                                      leading: CircleAvatar(
-                                        backgroundColor: isDanger
-                                            ? Colors.red
-                                            : Colors.orange,
-                                        child: Icon(
-                                          isDanger
-                                              ? Icons.warning
-                                              : Icons.analytics,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      title: Text(
-                                        item['title'] ?? '',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: isDanger
-                                              ? Colors.red
-                                              : Colors.orange,
-                                          fontSize: 17,
-                                        ),
-                                      ),
-                                      subtitle: Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 4.0,
-                                        ),
-                                        child: Text(
-                                          item['body'] ?? '',
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.black87,
-                                            height: 1.3,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 14,
-                                  right: 14,
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _archivedHistory.add(item);
-                                        _activeNotifications.removeWhere(
-                                          (element) =>
-                                              element['id'] == item['id'],
-                                        );
-                                      });
-                                    },
-                                    child: Icon(
-                                      Icons.close_rounded,
-                                      size: 20,
-                                      color: isDanger
-                                          ? Colors.red.withOpacity(0.5)
-                                          : Colors.orange.withOpacity(0.5),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }).toList(),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-        ],
-      ),
-    );
-  }
-}
-
 class PatientMainHub extends StatefulWidget {
   const PatientMainHub({super.key});
   @override
@@ -1408,11 +1085,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: subGreen),
-              onPressed: () {
+              onPressed: () async {
+                final code = newWardCodeController.text.trim();
+                if (code.length != 6) return;
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('새로운 피보호자가 목록에 추가되었습니다.')),
-                );
+                try {
+                  final user = await ApiService.instance.login(code);
+                  await SessionStore.saveSession(
+                    loginCode: code,
+                    userName: user['name']?.toString() ?? '',
+                    role: user['role']?.toString() ?? 'PATIENT',
+                    isGuardian: true,
+                  );
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${user['name']} 님 모니터링으로 전환했습니다.')),
+                  );
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('등록 실패: $e')),
+                  );
+                }
               },
               child: const Text(
                 '등록하기',
@@ -1543,7 +1237,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 subtitle: const Text('보호자에게 알려줄 6자리 코드를 확인합니다.'),
                 trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
+                onTap: () async {
+                  final code = await SessionStore.loginCode();
+                  if (!context.mounted) return;
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
@@ -1555,7 +1251,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       content: Text(
-                        '523 891',
+                        code != null
+                            ? ApiConfig.formatLoginCode(code)
+                            : '-',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 40,
@@ -1587,6 +1285,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ],
+          const SizedBox(height: 24),
+          ListTile(
+            leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+            title: const Text(
+              '로그아웃',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent),
+            ),
+            onTap: () async {
+              await SessionStore.clearSession();
+              RiskStreamService.instance.disconnect();
+              if (!context.mounted) return;
+              Navigator.pushAndRemoveUntil(
+                context,
+                _createRoute(const RoleSelectionScreen()),
+                (route) => false,
+              );
+            },
+          ),
         ],
       ),
     );

@@ -20,9 +20,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // 클라이언트에서 연결할 엔드포인트 설정
+        // 웹 브라우저용 (SockJS)
         registry.addEndpoint("/ws-monitoring")
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
+        // Flutter/네이티브 클라이언트용 (순수 WebSocket)
+        registry.addEndpoint("/ws-native")
+                .setAllowedOriginPatterns("*");
     }
 }

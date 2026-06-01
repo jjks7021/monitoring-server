@@ -13,7 +13,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -29,10 +31,9 @@ class AiRiskServiceTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         // Inject properties from application.properties manually for the test
-        ReflectionTestUtils.setField(aiRiskService, "aiApiUrl",
-                "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
-        ReflectionTestUtils.setField(aiRiskService, "aiApiKey", "AIzaSyC5K_AI0u5A4NdbjWW_UMdanCx0N9K0bW4");
-        ReflectionTestUtils.setField(aiRiskService, "aiModel", "gemini-2.5-flash");
+        ReflectionTestUtils.setField(aiRiskService, "aiApiUrl", "");
+        ReflectionTestUtils.setField(aiRiskService, "aiApiKey", "");
+        ReflectionTestUtils.setField(aiRiskService, "aiModel", "test-model");
     }
 
     @Test
@@ -56,10 +57,9 @@ class AiRiskServiceTest {
 
         AiRiskService.AiResult result = aiRiskService.assess(user, logs, 0.1, 0.2, 0.3, "TOILET", 25);
 
-        System.out.println("AI Probability: " + result.probability());
-        System.out.println("AI Summary: " + result.summary());
-
         assertNotNull(result);
         assertNotNull(result.summary());
+        assertTrue(result.summary().contains("규칙"));
+        assertEquals(0.15, result.probability(), 0.01);
     }
 }
