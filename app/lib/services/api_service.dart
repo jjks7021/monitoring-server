@@ -52,7 +52,11 @@ class ApiService {
       }
       final body = e.response?.data;
       if (body is Map && body['error'] != null) return body['error'].toString();
-      if (body is String) return body;
+      if (body is String && body.isNotEmpty) return body;
+      final status = e.response?.statusCode;
+      if (status == 500) {
+        return '서버 오류가 발생했습니다. 백엔드를 재시작한 뒤 다시 시도해 주세요.';
+      }
       return e.message ?? e.toString();
     }
     return e.toString();

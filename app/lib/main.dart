@@ -1302,7 +1302,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: const Text('보호자에게 알려줄 6자리 코드를 확인합니다.'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () async {
-                  final code = await SessionStore.loginCode();
+                  String? code;
+                  try {
+                    final hw = await SessionStore.getOrCreateHardwareId();
+                    final user =
+                        await ApiService.instance.connectPatient(hw);
+                    code = user['loginCode']?.toString();
+                  } catch (_) {
+                    code = await SessionStore.loginCode();
+                  }
                   if (!context.mounted) return;
                   showDialog(
                     context: context,
@@ -1315,7 +1323,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       content: Text(
-                        code != null
+                        code != null && code.length == 6
                             ? ApiConfig.formatLoginCode(code)
                             : '-',
                         textAlign: TextAlign.center,

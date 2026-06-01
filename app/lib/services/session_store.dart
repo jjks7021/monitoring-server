@@ -38,6 +38,8 @@ class SessionStore {
     await prefs.remove(_keyUserName);
     await prefs.remove(_keyRole);
     await prefs.remove(_keyIsGuardian);
+    // 로그아웃 시 기기 ID도 초기화 → 다음 연결 시 서버에서 새 랜덤 코드 발급
+    await prefs.remove(_keyHardwareId);
   }
 
   static Future<bool> hasSession() async {

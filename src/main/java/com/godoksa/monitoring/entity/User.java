@@ -11,7 +11,7 @@ import org.hibernate.annotations.CreationTimestamp;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "users") // "user"는 H2 예약어이므로 "users"로 변경
+@Table(name = "users")
 public class User {
 
     @Id
