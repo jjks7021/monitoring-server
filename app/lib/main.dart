@@ -338,17 +338,52 @@ class PatientConnectScreen extends StatefulWidget {
 
 class _PatientConnectScreenState extends State<PatientConnectScreen> {
   bool _loading = false;
-  final String _code = ApiConfig.demoPatientCode;
+  bool _loadingCode = true;
+  String _code = '';
+  String? _codeError;
+
+  @override
+  void initState() {
+    super.initState();
+    _issueConnectionCode();
+  }
+
+  Future<void> _issueConnectionCode() async {
+    setState(() {
+      _loadingCode = true;
+      _codeError = null;
+    });
+    try {
+      final hw = await SessionStore.getOrCreateHardwareId();
+      final user = await ApiService.instance.connectPatient(hw);
+      final code = user['loginCode']?.toString() ?? '';
+      if (code.length != 6) {
+        throw Exception('연결 코드를 받지 못했습니다.');
+      }
+      if (!mounted) return;
+      setState(() => _code = code);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _codeError = ApiService.formatError(e));
+    } finally {
+      if (mounted) setState(() => _loadingCode = false);
+    }
+  }
 
   Future<void> _startMonitoring() async {
+    if (_code.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('연결 코드를 먼저 발급받아 주세요.')),
+      );
+      return;
+    }
     setState(() => _loading = true);
     try {
-      final user = await ApiService.instance.login(_code);
       final hw = await SessionStore.getOrCreateHardwareId();
       await SessionStore.saveSession(
         loginCode: _code,
-        userName: user['name']?.toString() ?? '',
-        role: user['role']?.toString() ?? 'PATIENT',
+        userName: '피보호자',
+        role: 'PATIENT',
         isGuardian: false,
       );
       await ApiService.instance.registerDevice(hw, _code);
@@ -361,7 +396,7 @@ class _PatientConnectScreenState extends State<PatientConnectScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('서버 연결 실패: $e')),
+        SnackBar(content: Text('서버 연결 실패: ${ApiService.formatError(e)}')),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -409,18 +444,41 @@ class _PatientConnectScreenState extends State<PatientConnectScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      ApiConfig.formatLoginCode(_code),
-                      style: const TextStyle(
-                        fontSize: 50,
-                        color: subGreen,
-                        letterSpacing: 4,
-                        fontWeight: FontWeight.bold,
+                    if (_loadingCode)
+                      const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: CircularProgressIndicator(),
+                      )
+                    else if (_codeError != null)
+                      Column(
+                        children: [
+                          Text(
+                            _codeError!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                          const SizedBox(height: 12),
+                          TextButton(
+                            onPressed: _issueConnectionCode,
+                            child: const Text('다시 시도'),
+                          ),
+                        ],
+                      )
+                    else
+                      Text(
+                        ApiConfig.formatLoginCode(_code),
+                        style: const TextStyle(
+                          fontSize: 50,
+                          color: subGreen,
+                          letterSpacing: 4,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 30),
                     ElevatedButton.icon(
-                      onPressed: _loading ? null : _startMonitoring,
+                      onPressed: (_loading || _loadingCode || _code.length != 6)
+                          ? null
+                          : _startMonitoring,
                       icon: _loading
                           ? const SizedBox(
                               width: 20,
@@ -531,9 +589,11 @@ class _GuardianConnectScreenState extends State<GuardianConnectScreen> {
                   return;
                 }
                 try {
-                  final user = await ApiService.instance.login(code);
+                  final user = await ApiService.instance.connectGuardian(code);
+                  final patientCode =
+                      user['loginCode']?.toString() ?? code;
                   await SessionStore.saveSession(
-                    loginCode: code,
+                    loginCode: patientCode,
                     userName: user['name']?.toString() ?? '',
                     role: user['role']?.toString() ?? 'PATIENT',
                     isGuardian: true,
@@ -546,9 +606,13 @@ class _GuardianConnectScreenState extends State<GuardianConnectScreen> {
                   );
                 } catch (e) {
                   if (!context.mounted) return;
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('연결 실패: $e')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '연결 실패: ${ApiService.formatError(e)}',
+                      ),
+                    ),
+                  );
                 }
               },
               child: const Text(

@@ -4,9 +4,6 @@ class ApiConfig {
     defaultValue: 'http://10.0.2.2:8080',
   );
 
-  /// 시연용 피보호자 계정 (DataInitializer)
-  static const String demoPatientCode = '523891';
-
   static String wsUrl(String httpBase) {
     final uri = Uri.parse(httpBase);
     final scheme = uri.scheme == 'https' ? 'wss' : 'ws';

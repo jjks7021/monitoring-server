@@ -19,6 +19,24 @@ class ApiService {
     return Map<String, dynamic>.from(res.data as Map);
   }
 
+  /// 피보호자: 서버에서 랜덤 6자리 코드 발급 (동일 기기는 기존 코드 유지)
+  Future<Map<String, dynamic>> connectPatient(String hardwareId) async {
+    final res = await _dio.post(
+      '/api/users/patient/connect',
+      data: {'hardwareId': hardwareId},
+    );
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  /// 보호자: 피보호자와 동일한 6자리 코드로 연결
+  Future<Map<String, dynamic>> connectGuardian(String loginCode) async {
+    final res = await _dio.post(
+      '/api/users/guardian/connect',
+      data: {'loginCode': loginCode},
+    );
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
   Future<void> registerDevice(String hardwareId, String loginCode) async {
     await _dio.post('/api/devices/register', data: {
       'hardwareId': hardwareId,

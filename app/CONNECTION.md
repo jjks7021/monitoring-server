@@ -1,47 +1,29 @@
-# 백엔드 연동 가이드
+# 앱 ↔ 서버 연결 방법
 
-## 테스트 계정 (서버 dev 프로필 기동 시 자동 생성)
-| 역할 | loginCode | 이름 |
+## 연결 코드 (6자리)
+
+- **피보호자**: 앱이 서버에서 **랜덤 6자리 코드**를 발급해 화면에 표시합니다. (기기당 동일 코드 유지)
+- **보호자**: 피보호자 화면에 표시된 **같은 6자리 코드**를 입력해야 연결됩니다.
+- 코드가 일치하지 않으면 보호자 연결이 거부됩니다.
+
+## API
+
+| 역할 | 엔드포인트 | 설명 |
 |------|-----------|------|
-| 피보호자 | 523891 | 김영숙 |
-| 보호자 | 111111 | 김보호 |
+| 피보호자 | `POST /api/users/patient/connect` | `{ "hardwareId": "..." }` → 랜덤 코드 발급 |
+| 보호자 | `POST /api/users/guardian/connect` | `{ "loginCode": "123456" }` → 피보호자(PATIENT)만 허용 |
 
-## 1. 백엔드 실행
+## 실행 순서
 
-### MySQL 사용 (팀 DB)
-```bash
-cd ..   # monitoring-server 루트
-./gradlew bootRun
-```
+1. 백엔드: `.\gradlew bootRun` (프로젝트 루트)
+2. 피보호자 앱: 피보호자 선택 → **내 연결 코드** 확인 → 보호자에게 알려주기 → **모니터링 시작**
+3. 보호자 앱: 보호자 선택 → 피보호자가 알려준 **동일 6자리** 입력 → **연결하기**
 
-### 로컬 빠른 테스트 (H2, MySQL 없이)
-```bash
-cd ..
-SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
-```
+## Flutter 실행
 
-## 2. Flutter 앱 실행
-
-```bash
+```powershell
 cd app
-flutter pub get
-# Android 에뮬레이터
-flutter run
-# 실제 폰 (Mac IP 확인: ipconfig getifaddr en0)
-flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8080
+flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8080
 ```
 
-## 3. 앱에서 테스트 순서
-
-### 피보호자
-1. 피보호자용 선택 → 시작
-2. **「모니터링 시작」** → 서버 로그인+기기등록 (코드 523891)
-3. 카메라 탭에서 x/y/z 좌표·고독사 확률 확인
-
-### 보호자
-1. 보호자용 선택 → 코드 **523891** 입력 → 연결하기
-2. 홈: 최신 위험도·실시간 사진 촬영 요청 (WebSocket)
-3. 알림: `/api/crisis/active?loginCode=` 실시간 위험 목록
-
-## API 주소 설정
-`lib/config/api_config.dart` — 기본값 `http://10.0.2.2:8080` (Android 에뮬레이터)
+Chrome/Windows: `--dart-define=API_BASE_URL=http://localhost:8080`
