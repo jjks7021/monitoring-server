@@ -32,6 +32,12 @@
       "languageVersion": "3.9"
     },
     {
+      "name": "camera_desktop",
+      "rootUri": "file:///Users/jochan-u/.pub-cache/hosted/pub.dev/camera_desktop-1.1.7",
+      "packageUri": "lib/",
+      "languageVersion": "3.11"
+    },
+    {
       "name": "camera_platform_interface",
       "rootUri": "file:///Users/jochan-u/.pub-cache/hosted/pub.dev/camera_platform_interface-2.13.0",
       "packageUri": "lib/",

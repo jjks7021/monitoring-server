@@ -18,8 +18,9 @@ class ApiConfig {
   static String wsUrl(String httpBase) {
     final uri = Uri.parse(httpBase);
     final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
-    final port = uri.hasPort ? uri.port : (scheme == 'wss' ? 443 : 80);
-    return '$scheme://${uri.host}:$port/ws-native';
+    // ngrok URL은 명시적 포트가 없으므로 host만 사용 (표준 443/80 포트 자동 적용)
+    final hostWithPort = uri.hasPort ? '${uri.host}:${uri.port}' : uri.host;
+    return '$scheme://$hostWithPort/ws-native';
   }
 
   static String formatLoginCode(String code) {

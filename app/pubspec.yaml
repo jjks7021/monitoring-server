@@ -22,6 +22,7 @@ dependencies:
   shared_preferences: ^2.3.3
   uuid: ^4.5.1
   camera: ^0.11.0+2
+  camera_desktop: ^1.1.7
   google_mlkit_pose_detection: ^0.13.0
   permission_handler: ^11.3.1
   stomp_dart_client: ^2.1.3

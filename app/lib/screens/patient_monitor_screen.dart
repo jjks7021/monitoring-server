@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:monitoring_app/config/api_config.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
@@ -33,10 +34,18 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
   int _sendTick = 0;
   double _aiAlertThresholdPercent = 60;
 
+  /// ML Kit 포즈는 Android/iOS만 지원 (macOS·Windows·Linux 미지원)
+  static bool get _supportsMlKitPose =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
+  static bool get _isMacOS => !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
+
   @override
   void initState() {
     super.initState();
-    if (!kIsWeb) {
+    if (_supportsMlKitPose) {
       _detector = PoseDetector(options: PoseDetectorOptions());
     }
     _init();
@@ -104,7 +113,8 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
   }
 
   Future<void> _init() async {
-    if (!kIsWeb) {
+    // permission_handler는 macOS 데스크톱 미지원 → Info.plist + 시스템 설정 사용
+    if (_supportsMlKitPose) {
       try {
         final status = await Permission.camera.request();
         if (status.isDenied || status.isPermanentlyDenied) {
@@ -138,23 +148,28 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
         selected,
         ResolutionPreset.medium,
         enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.jpeg,
+        imageFormatGroup:
+            _isMacOS ? ImageFormatGroup.bgra8888 : ImageFormatGroup.jpeg,
       );
       await _camera!.initialize();
       if (mounted) {
         setState(() {
           _error = null;
-          _summary = kIsWeb
-              ? '카메라 연결됨 (웹: 포즈 좌표는 시뮬레이션)'
-              : '카메라 연결됨';
+          _summary = _supportsMlKitPose
+              ? '카메라 연결됨'
+              : _isMacOS
+                  ? '카메라 연결됨 (macOS: 포즈 분석 없음, 좌표는 시뮬레이션)'
+                  : '카메라 연결됨';
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _error = kIsWeb
-              ? '브라우저에서 카메라를 허용해 주세요 (주소창 자물쇠/카메라 아이콘)'
-              : '카메라 초기화 실패: $e';
+              ? '브라우저에서 카메라를 허용해 주세요'
+              : _isMacOS
+                  ? '카메라 초기화 실패: $e\n시스템 설정 → 개인정보 보호 → 카메라에서 monitoring_app 허용'
+                  : '카메라 초기화 실패: $e';
           _summary = '카메라 없이 좌표 시뮬레이션으로 전송합니다';
         });
       }
@@ -181,7 +196,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
     try {
       double x = 0, y = 0, z = 0;
       var source = kIsWeb ? '시뮬레이션 (웹)' : '시뮬레이션';
-      final canUsePoseDetection = !kIsWeb &&
+      final canUsePoseDetection = _supportsMlKitPose &&
           _detector != null &&
           _camera != null &&
           _camera!.value.isInitialized;
@@ -316,6 +331,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
     RiskStreamService.instance.disconnect();
     _camera?.dispose();
     _detector?.close();
+    _detector = null;
     super.dispose();
   }
 
@@ -349,6 +365,14 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
                           const SizedBox(height: 8),
                           const Text(
                             'Chrome이 카메라 사용을 물으면\n「허용」을 선택하세요',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                        ] else if (_isMacOS) ...[
+                          const SizedBox(height: 8),
+                          const Text(
+                            'macOS: 시스템 설정 → 개인정보 보호 → 카메라에서\n'
+                            'monitoring_app 허용 후 「다시 연결」',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.white70, fontSize: 13),
                           ),
@@ -447,7 +471,13 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('전송 실패: ${ApiService.formatError(e)}')),
+        SnackBar(
+          content: Text(
+            '전송 실패: ${ApiService.formatError(e)}\n'
+            '서버: ${ApiConfig.baseUrl}',
+          ),
+          duration: const Duration(seconds: 6),
+        ),
       );
     } finally {
       if (mounted) setState(() => _busy = false);

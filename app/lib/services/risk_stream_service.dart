@@ -26,10 +26,12 @@ class RiskStreamService {
   void connect(String loginCode) {
     disconnect();
     final url = ApiConfig.wsUrl(ApiConfig.baseUrl);
+    print('Connecting to WebSocket: $url with loginCode: $loginCode');
     _client = StompClient(
       config: StompConfig(
         url: url,
         onConnect: (frame) {
+          print('WebSocket Connected successfully.');
           _client?.subscribe(
             destination: '/topic/risk/$loginCode',
             callback: (frame) => _emit(frame, _riskController),
@@ -47,7 +49,12 @@ class RiskStreamService {
             callback: (frame) => _emit(frame, _crisisController),
           );
         },
-        onWebSocketError: (_) {},
+        onWebSocketError: (err) {
+          print('WebSocket Connection Error: $err');
+        },
+        onDebugMessage: (msg) {
+          print('[STOMP Debug] $msg');
+        },
         reconnectDelay: const Duration(seconds: 5),
       ),
     );

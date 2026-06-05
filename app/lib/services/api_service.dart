@@ -11,7 +11,11 @@ class ApiService {
     baseUrl: ApiConfig.baseUrl,
     connectTimeout: const Duration(seconds: 15),
     receiveTimeout: const Duration(seconds: 30),
-    headers: {'Content-Type': 'application/json'},
+    headers: {
+      'Content-Type': 'application/json',
+      // ngrok 무료 플랜의 브라우저 경고 페이지 삽입 방지
+      'ngrok-skip-browser-warning': 'true',
+    },
   ));
 
   Future<Map<String, dynamic>> login(String loginCode) async {
@@ -67,8 +71,18 @@ class ApiService {
       if (body is Map && body['error'] != null) return body['error'].toString();
       if (body is String && body.isNotEmpty) return body;
       final status = e.response?.statusCode;
+      if (status == 404) {
+        return 'API를 찾을 수 없습니다(404).\n'
+            '루트 프로젝트 MonitoringServerApplication을 Rebuild 후 재시작했는지 확인하세요.\n'
+            '(${ApiConfig.baseUrl})';
+      }
       if (status == 500) {
         return '서버 오류가 발생했습니다. 백엔드를 재시작한 뒤 다시 시도해 주세요.';
+      }
+      if (status == 400) {
+        return (body is Map && body['error'] != null)
+            ? body['error'].toString()
+            : '요청이 잘못되었습니다(400). 모니터링 시작 후 다시 시도하세요.';
       }
       return e.message ?? e.toString();
     }

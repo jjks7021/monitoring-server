@@ -1,49 +1,55 @@
 # 앱 ↔ 서버 연결 방법
 
+## 로컬 개발 (맥북 1대)
+
+1. `docker compose up -d` (프로젝트 루트)
+2. `./gradlew bootRun` (루트 `MonitoringServerApplication`)
+3. `cd app && flutter run -d macos` — 기본 API `http://127.0.0.1:8080`
+
+피보호자·보호자를 **둘 다 같은 맥**에서 테스트할 때도 Spring은 **한 번만** 실행하세요.
+
+### macOS에서 카메라가 안 뜰 때
+
+**IntelliJ에 카메라 권한을 줘도 효과 없습니다.** 카메라를 쓰는 프로세스는 IDE가 아니라 Flutter가 띄운 **`monitoring_app`** 입니다.
+
+1. 공식 `camera` 패키지는 **macOS 미지원** → 이 프로젝트는 **`camera_desktop`** 을 함께 씁니다. `pubspec.yaml` 변경 후 **완전 재빌드** (`flutter run -d macos`, hot reload만으로는 플러그인 미등록).
+2. **시스템 설정 → 개인정보 보호 및 보안 → 카메라**에서 **`monitoring_app`**(또는 `monitoring_app.app`)을 켭니다. 목록에 없으면 앱을 한 번 실행한 뒤 다시 확인.
+3. **ML Kit 포즈**는 Android/iOS만 지원합니다. macOS에서는 카메라 미리보기·긴급 사진은 가능하고, **좌표는 시뮬레이션**으로 서버에 전송됩니다.
+
 ## 연결 코드 (6자리)
 
-- **피보호자**: 앱이 서버에서 **랜덤 6자리 코드**를 발급해 화면에 표시합니다. (기기당 동일 코드 유지)
-- **보호자**: 피보호자 화면에 표시된 **같은 6자리 코드**를 입력해야 연결됩니다.
-- 코드가 일치하지 않으면 보호자 연결이 거부됩니다.
+- **피보호자**: 서버에서 코드 발급 → 보호자에게 전달
+- **보호자**: 동일 6자리 입력
 
 ## API
 
-| 역할 | 엔드포인트 | 설명 |
-|------|-----------|------|
-| 피보호자 | `POST /api/users/patient/connect` | `{ "hardwareId": "..." }` → 랜덤 코드 발급 |
-| 보호자 | `POST /api/users/guardian/connect` | `{ "loginCode": "123456" }` → 피보호자(PATIENT)만 허용 |
+| 역할 | 엔드포인트 |
+|------|-----------|
+| 피보호자 | `POST /api/users/patient/connect` |
+| 보호자 | `POST /api/users/guardian/connect` |
 
-## 실행 순서
+## 플랫폼별 API 주소 (기본값)
 
-1. 백엔드: `.\gradlew bootRun` (프로젝트 루트)
-2. 피보호자 앱: 피보호자 선택 → **내 연결 코드** 확인 → 보호자에게 알려주기 → **모니터링 시작**
-3. 보호자 앱: 보호자 선택 → 피보호자가 알려준 **동일 6자리** 입력 → **연결하기**
-
-## Flutter 실행
-
-기본 API 주소는 플랫폼별로 자동 설정됩니다. 별도 `--dart-define` 없이 실행해도 됩니다.
-
-| 환경 | 기본 API |
-|------|----------|
-| macOS / iOS 시뮬레이터 / Windows / Web | `http://127.0.0.1:8080` |
+| 환경 | API |
+|------|-----|
+| macOS / iOS / Windows | `http://127.0.0.1:8080` |
 | Android 에뮬레이터 | `http://10.0.2.2:8080` |
-| Android 실기기 | `http://<PC_LAN_IP>:8080` (`--dart-define` 필요) |
+| Android 실기기 / 원격 팀원 | `--dart-define=API_BASE_URL=http://<호스트IP>:8080` 또는 ngrok HTTPS |
 
-macOS:
+## 팀원 원격 접속 (나중에)
 
-```bash
-cd app
-flutter run -d macos
-```
-
-Android 에뮬레이터 (명시적 지정이 필요할 때):
+호스트만 Spring + MySQL 실행. 팀원은 **ngrok HTTP(8080)** 로 백엔드에 붙는 것을 권장합니다.
 
 ```bash
-flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8080
+# 호스트
+ngrok http 8080
+
+# 팀원 Flutter (Spring 실행 X)
+flutter run -d macos --dart-define=API_BASE_URL=https://xxxx.ngrok-free.app
 ```
 
-## 백엔드 실행 위치
+MySQL만 `ngrok tcp 3306`으로 공유하면 DB CRUD만 맞고, **실시간 알림(WebSocket)·긴급 사진**은 동작하지 않을 수 있습니다.
 
-IntelliJ / Gradle Run은 **저장소 루트** `src/main/java/.../MonitoringServerApplication` 을 사용하세요.
+## 백엔드 위치
 
-`app/src/main/java` 아래 Spring Boot는 구버전(`/api/users/patient/connect` 없음)이므로 피보호자 코드 발급이 되지 않습니다.
+**루트** `src/main/java/.../MonitoringServerApplication` — `app/src/main/java` 구버전 사용 금지

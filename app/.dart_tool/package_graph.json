@@ -8,6 +8,7 @@
       "version": "1.0.0+1",
       "dependencies": [
         "camera",
+        "camera_desktop",
         "cupertino_icons",
         "dio",
         "flutter",
@@ -85,6 +86,16 @@
       "dependencies": [
         "flutter",
         "google_mlkit_commons"
+      ]
+    },
+    {
+      "name": "camera_desktop",
+      "version": "1.1.7",
+      "dependencies": [
+        "camera_platform_interface",
+        "flutter",
+        "plugin_platform_interface",
+        "stream_transform"
       ]
     },
     {
@@ -315,6 +326,28 @@
       ]
     },
     {
+      "name": "stream_transform",
+      "version": "2.1.1",
+      "dependencies": []
+    },
+    {
+      "name": "plugin_platform_interface",
+      "version": "2.1.8",
+      "dependencies": [
+        "meta"
+      ]
+    },
+    {
+      "name": "camera_platform_interface",
+      "version": "2.13.0",
+      "dependencies": [
+        "cross_file",
+        "flutter",
+        "plugin_platform_interface",
+        "stream_transform"
+      ]
+    },
+    {
       "name": "flutter_plugin_android_lifecycle",
       "version": "2.0.34",
       "dependencies": [
@@ -330,16 +363,6 @@
         "flutter_web_plugins",
         "stream_transform",
         "web"
-      ]
-    },
-    {
-      "name": "camera_platform_interface",
-      "version": "2.13.0",
-      "dependencies": [
-        "cross_file",
-        "flutter",
-        "plugin_platform_interface",
-        "stream_transform"
       ]
     },
     {
@@ -546,23 +569,11 @@
       ]
     },
     {
-      "name": "plugin_platform_interface",
-      "version": "2.1.8",
-      "dependencies": [
-        "meta"
-      ]
-    },
-    {
       "name": "flutter_web_plugins",
       "version": "0.0.0",
       "dependencies": [
         "flutter"
       ]
-    },
-    {
-      "name": "stream_transform",
-      "version": "2.1.1",
-      "dependencies": []
     },
     {
       "name": "cross_file",
