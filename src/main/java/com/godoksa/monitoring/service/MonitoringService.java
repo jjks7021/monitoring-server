@@ -30,6 +30,7 @@ public class MonitoringService {
         private final CrisisRepository crisisRepository;
         private final RiskAssessmentRepository riskAssessmentRepository;
         private final AiRiskService aiRiskService;
+        private final CrisisAlertService crisisAlertService;
         private final SimpMessagingTemplate messagingTemplate;
 
         @Transactional
@@ -50,11 +51,15 @@ public class MonitoringService {
                 if ("TOILET".equals(locationTag)) {
                         checkToiletCrisis(user, currentDuration);
                 }
-                checkLethargyCrisis(user);
+                if (x != null && y != null) {
+                        checkLethargyCrisis(user);
+                }
 
                 List<ActivityLog> recentLogs = activityLogRepository.findByUserOrderByCreatedAtDesc(user);
                 AiRiskService.AiResult aiResult = aiRiskService.assess(user, recentLogs, x, y, z, locationTag,
                                 currentDuration);
+
+                crisisAlertService.raiseAiHighRiskIfNeeded(user, aiResult.probability(), aiResult.summary());
 
                 List<String> activeCrises = crisisRepository.findByStatus(Crisis.CrisisStatus.CRISIS).stream()
                                 .filter(c -> c.getUser().getId().equals(user.getId()))
@@ -102,7 +107,10 @@ public class MonitoringService {
         }
 
         private void checkLethargyCrisis(User user) {
-                List<ActivityLog> allLogs = activityLogRepository.findByUserOrderByCreatedAtDesc(user);
+                List<ActivityLog> allLogs = activityLogRepository.findByUserOrderByCreatedAtDesc(user).stream()
+                                .filter(l -> l.getXCoord() != null && l.getYCoord() != null)
+                                .limit(10)
+                                .collect(Collectors.toList());
                 if (allLogs.size() < 10)
                         return;
 
@@ -110,7 +118,7 @@ public class MonitoringService {
                 for (int i = 0; i < 10; i++) {
                         sumX += allLogs.get(i).getXCoord();
                         sumY += allLogs.get(i).getYCoord();
-                        sumZ += allLogs.get(i).getZCoord() != null ? allLogs.get(i).getZCoord() : 0;
+                        sumZ += allLogs.get(i).getZCoord() != null ? allLogs.get(i).getZCoord() : 0.0;
                 }
                 double avgX = sumX / 10, avgY = sumY / 10, avgZ = sumZ / 10;
 
@@ -118,7 +126,7 @@ public class MonitoringService {
                 for (int i = 0; i < 10; i++) {
                         double dx = allLogs.get(i).getXCoord() - avgX;
                         double dy = allLogs.get(i).getYCoord() - avgY;
-                        double dz = (allLogs.get(i).getZCoord() != null ? allLogs.get(i).getZCoord() : 0) - avgZ;
+                        double dz = (allLogs.get(i).getZCoord() != null ? allLogs.get(i).getZCoord() : 0.0) - avgZ;
                         varianceSum += Math.sqrt(dx * dx + dy * dy + dz * dz);
                 }
                 double currentRange = varianceSum / 10;

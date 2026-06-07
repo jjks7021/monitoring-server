@@ -25,11 +25,25 @@ out/
 ### VS Code ###
 .vscode/
 
-# 데이터베이스 비번 등 민감한 정보 제외
+# macOS
+.DS_Store
+**/.DS_Store
+
+# 민감 정보 제외 (절대 올리지 말 것)
 src/main/resources/application.yml
-
-ngrok.exe
-
-app/.dart_tool/
-
 src/main/resources/application-dev.properties
+application-secrets.properties
+
+# ngrok 바이너리
+ngrok.exe
+ngrok
+
+# Flutter 빌드/생성 파일 (로컬 전용)
+app/.dart_tool/
+app/build/
+app/linux/flutter/generated_plugin_registrant.cc
+app/linux/flutter/generated_plugins.cmake
+app/macos/Flutter/GeneratedPluginRegistrant.swift
+app/macos/Podfile.lock
+app/windows/flutter/generated_plugin_registrant.cc
+app/windows/flutter/generated_plugins.cmake

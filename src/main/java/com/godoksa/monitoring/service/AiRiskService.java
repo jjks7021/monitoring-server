@@ -7,6 +7,7 @@ import com.godoksa.monitoring.entity.Crisis;
 import com.godoksa.monitoring.entity.User;
 import com.godoksa.monitoring.repository.CrisisRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AiRiskService {
 
     private final CrisisRepository crisisRepository;
@@ -50,18 +52,10 @@ public class AiRiskService {
             }
             return new AiResult(finalScore, finalSummary);
         } catch (Exception e) {
-            // 429 에러나 일시적 장애 시 사용자를 위한 대체 분석 제공
-            String fallbackSummary = generateFallbackSummary(locationTag, currentDuration, x, y);
-            return new AiResult(ruleScore, fallbackSummary);
+            log.error("AI risk API failed for user {}: {} — {}", user.getLoginCode(), e.getClass().getSimpleName(),
+                    e.getMessage(), e);
+            return new AiResult(ruleScore, "ai api 크래딧 초과");
         }
-    }
-
-    private String generateFallbackSummary(String locationTag, int duration, Double x, Double y) {
-        String place = locationTag.equals("TOILET") ? "화장실" : "거실";
-        if (locationTag.equals("TOILET") && duration > 15) {
-            return String.format("%s에 %d분째 체류 중입니다. 평소보다 시간이 길어져 주의가 필요합니다.", place, duration);
-        }
-        return String.format("%s에서 규칙적인 활동이 감지되고 있습니다. (상태 양호)", place);
     }
 
     private double computeRuleScore(User user, int currentDuration) {
@@ -82,32 +76,48 @@ public class AiRiskService {
             String locationTag, int currentDuration) throws Exception {
         String logsJson = logs.stream().limit(20)
                 .map(l -> String.format("{\"x\":%.3f,\"y\":%.3f,\"z\":%.3f,\"tag\":\"%s\"}",
-                        l.getXCoord(), l.getYCoord(),
-                        l.getZCoord() != null ? l.getZCoord() : 0,
-                        l.getLocationTag()))
+                        l.getXCoord() != null ? l.getXCoord() : 0.0,
+                        l.getYCoord() != null ? l.getYCoord() : 0.0,
+                        l.getZCoord() != null ? l.getZCoord() : 0.0,
+                        l.getLocationTag() != null ? l.getLocationTag() : "ROOM"))
                 .collect(Collectors.joining(",", "[", "]"));
 
         String prompt = """
                 당신은 시니어 고독사 예방을 위한 전문 분석 AI입니다. 주어진 데이터를 바탕으로 현재 위험도를 분석하세요.
-                반드시 JSON 형식으로만 응답하세요.
+                반드시 JSON 객체 하나만 응답하세요 (다른 텍스트 없음).
 
                 [환자 정보] 이름: %s, 평소 화장실 체류 시간: %d분, 평소 활동성 수치: %.2f
                 [현재 상황] 장소: %s, 현재 해당 장소 체류 시간: %d분, 현재 좌표: (%.3f, %.3f, %.3f)
                 [최근 이동 로그] %s
 
                 [응답 가이드라인]
-                1. probability: 0.0에서 1.0 사이의 실수 (위험할수록 1.0에 가깝게)
-                2. summary: 현재 상태를 친절하고 전문적으로 설명하는 한글 한 문장 (예: "거실에서 활발한 움직임이 감지되어 매우 안전한 상태입니다.")
+                1. probability: 0.0에서 1.0 사이의 실수 (고독사 위험도가 높을수록 1.0에 가깝게 설정).
+                   - 안전한 상태(위험도 낮음)인 경우: 0.0 ~ 0.3
+                   - 주의가 필요한 상태(위험도 보통)인 경우: 0.4 ~ 0.6
+                   - 위험한 상태(위험도 높음)인 경우: 0.7 ~ 1.0
+                2. summary: 현재 상태를 친절하고 전문적으로 설명하는 한글 한 문장.
+
+                *중요: probability 수치와 summary의 위험도 분석 내용은 반드시 서로 모순되지 않고 일치해야 합니다. 안전하다고 판단하여 낮은 위험도라고 요약했다면, probability도 반드시 0.3 이하여야 합니다.
 
                 응답 형식: {"probability": 0.0, "summary": "요약 내용"}
-                """.formatted(user.getName(), user.getAvgToiletDuration(), user.getAvgActivityRange(),
-                locationTag, currentDuration, x, y, z, logsJson);
+                """.formatted(
+                user.getName(),
+                user.getAvgToiletDuration() != null ? user.getAvgToiletDuration() : 20,
+                user.getAvgActivityRange() != null ? user.getAvgActivityRange() : 1.0,
+                locationTag != null ? locationTag : "ROOM",
+                currentDuration,
+                x != null ? x : 0.0,
+                y != null ? y : 0.0,
+                z != null ? z : 0.0,
+                logsJson);
 
         Map<String, Object> body = Map.of(
                 "model", aiModel,
                 "messages", List.of(Map.of("role", "user", "content", prompt)),
-                "temperature", 0.7 // 창의적인 요약을 위해 약간 높임
-        );
+                "temperature", 0.3,
+                "response_format", Map.of("type", "json_object"));
+
+        log.info("=== AI REQUEST PROMPT ===\n{}", prompt);
 
         RestClient client = RestClient.builder().build();
         String response = client.post()
@@ -117,6 +127,8 @@ public class AiRiskService {
                 .body(body)
                 .retrieve()
                 .body(String.class);
+
+        log.info("=== AI RESPONSE RAW ===\n{}", response);
 
         JsonNode root = objectMapper.readTree(response);
         String content = root.path("choices").path(0).path("message").path("content").asText();

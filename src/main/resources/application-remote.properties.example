@@ -1,0 +1,11 @@
+# 팀원이 ngrok 등으로 "호스트 맥북의 MySQL"에만 붙을 때 (Spring은 호스트 1대만 실행)
+# 사용: IntelliJ VM options 또는 실행 인자
+#   --spring.profiles.active=remote
+# 그리고 아래 URL을 팀원이 공유한 ngrok TCP 주소로 바꿉니다.
+#
+# 권장: MySQL 터널 대신 ngrok http 8080 으로 백엔드만 공개하고
+# Flutter는 --dart-define=API_BASE_URL=https://xxxx.ngrok-free.app
+
+spring.datasource.url=jdbc:mysql://0.tcp.jp.ngrok.io:00000/godoksa_db?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true
+spring.datasource.username=team_user
+spring.datasource.password=team1234!

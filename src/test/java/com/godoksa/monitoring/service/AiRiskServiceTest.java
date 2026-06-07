@@ -62,4 +62,59 @@ class AiRiskServiceTest {
         assertTrue(result.summary().contains("규칙"));
         assertEquals(0.15, result.probability(), 0.01);
     }
+
+    @Test
+    void testAssess_WhenApiThrowsException_ReturnsCreditExceeded() {
+        User user = User.builder()
+                .id(1L)
+                .name("Test User")
+                .avgToiletDuration(20)
+                .avgActivityRange(1.5)
+                .build();
+
+        List<ActivityLog> logs = new ArrayList<>();
+        logs.add(ActivityLog.builder()
+                .xCoord(0.123)
+                .yCoord(0.456)
+                .zCoord(0.789)
+                .locationTag("ROOM")
+                .build());
+
+        ReflectionTestUtils.setField(aiRiskService, "aiApiKey", "some-fake-key");
+        ReflectionTestUtils.setField(aiRiskService, "aiApiUrl", "http://invalid-url-for-testing");
+
+        when(crisisRepository.findByStatus(any())).thenReturn(new ArrayList<>());
+
+        AiRiskService.AiResult result = aiRiskService.assess(user, logs, 0.1, 0.2, 0.3, "TOILET", 25);
+
+        assertNotNull(result);
+        assertEquals("ai api 크래딧 초과", result.summary());
+        assertEquals(0.15, result.probability(), 0.01);
+    }
+
+    @Test
+    void testAssess_WithNullCoordinates_DoesNotThrowException() {
+        User user = User.builder()
+                .id(1L)
+                .name("Test User")
+                .avgToiletDuration(20)
+                .avgActivityRange(1.5)
+                .build();
+
+        List<ActivityLog> logs = new ArrayList<>();
+        logs.add(ActivityLog.builder()
+                .xCoord(null)
+                .yCoord(null)
+                .zCoord(null)
+                .locationTag(null)
+                .build());
+
+        when(crisisRepository.findByStatus(any())).thenReturn(new ArrayList<>());
+
+        AiRiskService.AiResult result = aiRiskService.assess(user, logs, null, null, null, null, 25);
+
+        assertNotNull(result);
+        assertNotNull(result.summary());
+        assertEquals(0.15, result.probability(), 0.01);
+    }
 }
