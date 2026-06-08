@@ -56,7 +56,6 @@ public class DeviceController {
 
             CoordinateResponse response = monitoringService.analyzeMovement(
                     request.getLoginCode(),
-                    request.getHardwareId(),
                     request.getX(),
                     request.getY(),
                     request.getZ(),

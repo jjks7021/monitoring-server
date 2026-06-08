@@ -33,7 +33,7 @@ public class MonitoringService {
         private final SimpMessagingTemplate messagingTemplate;
 
         @Transactional
-        public CoordinateResponse analyzeMovement(String loginCode, String hardwareId,
+        public CoordinateResponse analyzeMovement(String loginCode,
                         Double x, Double y, Double z, String locationTag, int currentDuration) {
                 User user = userRepository.findByLoginCode(loginCode)
                                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자 코드입니다."));
@@ -63,7 +63,7 @@ public class MonitoringService {
                 List<String> activeCrises = crisisRepository.findByStatus(Crisis.CrisisStatus.CRISIS).stream()
                                 .filter(c -> c.getUser().getId().equals(user.getId()))
                                 .map(Crisis::getCrisisType)
-                                .collect(Collectors.toList());
+                                .toList();
 
                 String ruleAlerts = String.join(",", activeCrises);
                 riskAssessmentRepository.save(RiskAssessment.builder()
@@ -109,26 +109,11 @@ public class MonitoringService {
                 List<ActivityLog> allLogs = activityLogRepository.findByUserOrderByCreatedAtDesc(user).stream()
                                 .filter(l -> l.getXCoord() != null && l.getYCoord() != null)
                                 .limit(10)
-                                .collect(Collectors.toList());
+                                .toList();
                 if (allLogs.size() < 10)
                         return;
 
-                double sumX = 0, sumY = 0, sumZ = 0;
-                for (int i = 0; i < 10; i++) {
-                        sumX += allLogs.get(i).getXCoord();
-                        sumY += allLogs.get(i).getYCoord();
-                        sumZ += allLogs.get(i).getZCoord() != null ? allLogs.get(i).getZCoord() : 0.0;
-                }
-                double avgX = sumX / 10, avgY = sumY / 10, avgZ = sumZ / 10;
-
-                double varianceSum = 0;
-                for (int i = 0; i < 10; i++) {
-                        double dx = allLogs.get(i).getXCoord() - avgX;
-                        double dy = allLogs.get(i).getYCoord() - avgY;
-                        double dz = (allLogs.get(i).getZCoord() != null ? allLogs.get(i).getZCoord() : 0.0) - avgZ;
-                        varianceSum += Math.sqrt(dx * dx + dy * dy + dz * dz);
-                }
-                double currentRange = varianceSum / 10;
+                double currentRange = calculateCurrentRange(allLogs);
                 double normalRange = (user.getAvgActivityRange() != null && user.getAvgActivityRange() > 0)
                                 ? user.getAvgActivityRange()
                                 : 1.0;
@@ -148,6 +133,25 @@ public class MonitoringService {
                                                 .build());
                         }
                 }
+        }
+
+        private double calculateCurrentRange(List<ActivityLog> logs) {
+                double sumX = 0, sumY = 0, sumZ = 0;
+                for (int i = 0; i < 10; i++) {
+                        sumX += logs.get(i).getXCoord();
+                        sumY += logs.get(i).getYCoord();
+                        sumZ += logs.get(i).getZCoord() != null ? logs.get(i).getZCoord() : 0.0;
+                }
+                double avgX = sumX / 10, avgY = sumY / 10, avgZ = sumZ / 10;
+
+                double varianceSum = 0;
+                for (int i = 0; i < 10; i++) {
+                        double dx = logs.get(i).getXCoord() - avgX;
+                        double dy = logs.get(i).getYCoord() - avgY;
+                        double dz = (logs.get(i).getZCoord() != null ? logs.get(i).getZCoord() : 0.0) - avgZ;
+                        varianceSum += Math.sqrt(dx * dx + dy * dy + dz * dz);
+                }
+                return varianceSum / 10;
         }
 
         public Map<String, Long> getLocationStatistics(String loginCode) {
