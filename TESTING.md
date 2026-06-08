@@ -46,7 +46,8 @@ cp application-secrets.properties.example application-secrets.properties   # AI_
 
 ```bash
 cd app
-flutter run -d macos   # 또는 Android 에뮬레이터
+flutter emulators --launch <본인_에뮬레이터_이름>
+flutter run -d emulator
 ```
 
 1. **피보호자** 선택 → 연결 코드 발급 → **모니터링 시작**  
@@ -59,7 +60,8 @@ flutter run -d macos   # 또는 Android 에뮬레이터
 
 ```bash
 cd app
-flutter run -d macos
+flutter emulators --launch <본인_에뮬레이터_이름>
+flutter run -d emulator
 # 실기기/다른 PC: --dart-define=API_BASE_URL=http://<서버IP>:8080
 ```
 
