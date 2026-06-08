@@ -41,7 +41,7 @@ cp application-secrets.properties.example application-secrets.properties
 ```bash
 cd app
 flutter pub get
-flutter emulators --launch Pixel_2
+flutter emulators --launch <본인_에뮬레이터_이름>
 flutter run -d emulator
 ```
 
@@ -61,7 +61,7 @@ flutter run -d emulator
 
 ```bash
 cd app
-flutter emulators --launch Pixel_2
+flutter emulators --launch <본인_에뮬레이터_이름>
 flutter run -d emulator --dart-define=API_BASE_URL=https://<할당받은_ngrok_도메인>.ngrok-free.dev
 ```
 
