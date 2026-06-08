@@ -5,7 +5,7 @@ import 'package:stomp_dart_client/stomp_dart_client.dart';
 
 import '../config/api_config.dart';
 
-/// STOMP 구독: /topic/risk/{loginCode}, /topic/photo-request/{loginCode}
+// STOMP WebSocket 구독 서비스 (위험도, 사진 요청, 위기 알림)
 class RiskStreamService {
   RiskStreamService._();
   static final RiskStreamService instance = RiskStreamService._();
@@ -26,12 +26,10 @@ class RiskStreamService {
   void connect(String loginCode) {
     disconnect();
     final url = ApiConfig.wsUrl(ApiConfig.baseUrl);
-    print('Connecting to WebSocket: $url with loginCode: $loginCode');
     _client = StompClient(
       config: StompConfig(
         url: url,
         onConnect: (frame) {
-          print('WebSocket Connected successfully.');
           _client?.subscribe(
             destination: '/topic/risk/$loginCode',
             callback: (frame) => _emit(frame, _riskController),
@@ -50,10 +48,7 @@ class RiskStreamService {
           );
         },
         onWebSocketError: (err) {
-          print('WebSocket Connection Error: $err');
-        },
-        onDebugMessage: (msg) {
-          print('[STOMP Debug] $msg');
+          // WebSocket 연결 오류
         },
         reconnectDelay: const Duration(seconds: 5),
       ),

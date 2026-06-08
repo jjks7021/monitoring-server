@@ -52,8 +52,8 @@ public class AiRiskService {
             }
             return new AiResult(finalScore, finalSummary);
         } catch (Exception e) {
-            log.error("AI risk API failed for user {}: {} — {}", user.getLoginCode(), e.getClass().getSimpleName(),
-                    e.getMessage(), e);
+            // AI 호출 실패하면 기본 계산 점수 사용
+            log.error("AI API 호출 실패: {}", e.getMessage());
             return new AiResult(ruleScore, "ai api 크래딧 초과");
         }
     }
@@ -117,8 +117,6 @@ public class AiRiskService {
                 "temperature", 0.3,
                 "response_format", Map.of("type", "json_object"));
 
-        log.info("=== AI REQUEST PROMPT ===\n{}", prompt);
-
         RestClient client = RestClient.builder().build();
         String response = client.post()
                 .uri(aiApiUrl)
@@ -127,8 +125,6 @@ public class AiRiskService {
                 .body(body)
                 .retrieve()
                 .body(String.class);
-
-        log.info("=== AI RESPONSE RAW ===\n{}", response);
 
         JsonNode root = objectMapper.readTree(response);
         String content = root.path("choices").path(0).path("message").path("content").asText();

@@ -34,7 +34,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
   int _sendTick = 0;
   double _aiAlertThresholdPercent = 60;
 
-  /// ML Kit 포즈는 Android/iOS만 지원 (macOS·Windows·Linux 미지원)
+  // ML Kit 포즈는 모바일 환경만 지원됨
   static bool get _supportsMlKitPose =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
@@ -75,7 +75,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
     PatientDebugStore.aiAlertThresholdPercent.value = _aiAlertThresholdPercent;
   }
 
-  /// 웹·포즈 미검출 시: 시간에 따라 변하는 좌표
+  // 포즈 미검출 시 임시 좌표 사용
   ({double x, double y, double z}) _simulatedCoordinates() {
     _sendTick++;
     final t = DateTime.now().millisecondsSinceEpoch / 1000.0 + _sendTick * 0.7;
@@ -86,7 +86,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
     );
   }
 
-  /// 피보호자 앱: 전면(셀카) 우선. 에뮬레이터는 전면을 PC 웹캠으로 설정해야 함.
+  // 전면 카메라 우선 사용
   CameraDescription _pickCamera(List<CameraDescription> cameras) {
     for (final c in cameras) {
       if (c.lensDirection == CameraLensDirection.front) return c;
@@ -308,7 +308,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
     }
   }
 
-  /// 긴급 시 보호자 열람용 1회 사진 업로드 후 로컬 파일 즉시 삭제
+  // 긴급 사진 전송 후 파일 삭제
   Future<void> _respondToGuardianPhotoRequest() async {
     if (_busy) return;
     final loginCode = await SessionStore.loginCode();

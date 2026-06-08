@@ -13,8 +13,7 @@ class ApiService {
     receiveTimeout: const Duration(seconds: 30),
     headers: {
       'Content-Type': 'application/json',
-      // ngrok 무료 플랜의 브라우저 경고 페이지 삽입 방지
-      'ngrok-skip-browser-warning': 'true',
+      'ngrok-skip-browser-warning': 'true', // ngrok 사용할 때 필요함
     },
   ));
 
@@ -23,7 +22,7 @@ class ApiService {
     return Map<String, dynamic>.from(res.data as Map);
   }
 
-  /// 피보호자: 서버에서 랜덤 6자리 코드 발급 (동일 기기는 기존 코드 유지)
+  // 피보호자: 연결 코드 발급
   Future<Map<String, dynamic>> connectPatient(String hardwareId) async {
     final res = await _dio.post(
       '/api/users/patient/connect',
@@ -32,7 +31,7 @@ class ApiService {
     return Map<String, dynamic>.from(res.data as Map);
   }
 
-  /// 보호자: 피보호자와 동일한 6자리 코드로 연결
+  // 보호자: 코드로 연결
   Future<Map<String, dynamic>> connectGuardian(String loginCode) async {
     final res = await _dio.post(
       '/api/users/guardian/connect',
@@ -46,7 +45,7 @@ class ApiService {
     return Map<String, dynamic>.from(res.data as Map);
   }
 
-  /// 테스트: Crisis 발생 → 보호자 알림(WebSocket + /api/crisis/active) — AI 경로와 무관
+  // 테스트 알림 전송
   Future<void> triggerTestCrisis(String loginCode) async {
     await _dio.post(
       '/api/patient/trigger-test-crisis',
@@ -206,7 +205,7 @@ class ApiService {
     );
   }
 
-  /// 긴급 사진 1회 열람 (서버 메모리에서 즉시 삭제됨)
+  // 긴급 사진 1회 열람
   Future<Uint8List?> fetchEmergencyPhoto(String loginCode) async {
     try {
       final res = await _dio.get<List<int>>(

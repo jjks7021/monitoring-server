@@ -18,7 +18,7 @@ public class PatientTestController {
     private final UserRepository userRepository;
     private final CrisisAlertService crisisAlertService;
 
-    /** 알림 UI만 빠르게 확인 (AI 위험도와 무관) */
+    // 알림 테스트용 (임의로 위험 상황 발생시킴)
     @PostMapping("/trigger-test-crisis")
     @Transactional
     public ResponseEntity<?> triggerTestCrisis(@RequestBody Map<String, String> body) {
@@ -36,15 +36,14 @@ public class PatientTestController {
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
 
-    /** 현재 AI 자동 알림 임계값 (보호자 알림 연동 테스트 시 참고) */
+    // 현재 AI 자동 알림 임계값 확인
     @GetMapping("/alert-config")
     public ResponseEntity<?> alertConfig() {
         double threshold = crisisAlertService.getAiCrisisThreshold();
         return ResponseEntity.ok(Map.of(
                 "aiCrisisThreshold", threshold,
                 "aiCrisisThresholdPercent", threshold * 100,
-                "hint", "피보호자 좌표 전송 시 AI 확률이 이 값 이상이면 보호자 알림이 자동 발생합니다. "
-                        + "테스트 시 application.properties 의 monitoring.ai.crisis-threshold 를 0.2 등으로 낮출 수 있습니다."));
+                "hint", "피보호자 좌표 전송 시 AI 확률이 이 값 이상이면 보호자 알림이 자동 발생합니다."));
     }
 
     private User resolvePatient(String loginCode) {

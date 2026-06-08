@@ -7,10 +7,10 @@ import java.util.List;
 import java.util.Optional;
 
 public interface CrisisRepository extends JpaRepository<Crisis, Long> {
-    // 아직 해결되지 않은 특정 유저의 위험 상황 찾기
+    // 특정 유저의 특정 상태 위기 조회
     Optional<Crisis> findByUserAndStatus(User user, Crisis.CrisisStatus status);
 
-    // 현재 발생한 모든 실시간 위험 상황 목록 조회 (관리자용)
+    // 모든 활성 위기 조회
     List<Crisis> findByStatus(Crisis.CrisisStatus status);
 
     List<Crisis> findByUser_LoginCodeAndStatus(String loginCode, Crisis.CrisisStatus status);

@@ -18,14 +18,14 @@ public class ActivityLog {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private User user; // 누구의 활동 기록인지
+    private User user;
 
     private Double xCoord;
     private Double yCoord;
     private Double zCoord;
 
-    private String locationTag; // 'TOILET', 'ROOM' 등
+    private String locationTag; // TOILET, ROOM 등
 
     @CreationTimestamp
-    private LocalDateTime createdAt; // 좌표가 찍힌 시간
+    private LocalDateTime createdAt;
 }

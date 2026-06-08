@@ -22,9 +22,7 @@ public class GuardianPhotoController {
     private final CrisisRepository crisisRepository;
     private final PhotoSnapshotService photoSnapshotService;
 
-    /**
-     * 활성 위험(CRISIS)이 있을 때만 1회 열람 가능. 조회 즉시 서버 메모리에서 삭제.
-     */
+    // 보호자가 긴급 사진 1회 열람 (조회 즉시 서버에서 삭제됨)
     @GetMapping("/emergency-photo/{loginCode}")
     public ResponseEntity<?> viewEmergencyPhoto(@PathVariable String loginCode) {
         boolean hasCrisis = !crisisRepository

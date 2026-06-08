@@ -8,10 +8,7 @@ import org.springframework.stereotype.Service;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * 긴급 사진은 DB·디스크에 저장하지 않고 메모리에만 잠시 보관.
- * 보호자가 1회 조회하면 즉시 삭제(consume).
- */
+// 사진을 메모리에만 임시 저장 (한 번 보면 삭제됨)
 @Service
 @RequiredArgsConstructor
 public class PhotoSnapshotService {
@@ -32,7 +29,7 @@ public class PhotoSnapshotService {
                 new PhotoReadyEvent("PHOTO_READY", loginCode));
     }
 
-  /** 보호자 1회 열람 후 메모리에서 삭제 */
+    // 보호자 1회 열람 후 메모리에서 삭제
     public Optional<CachedPhoto> consume(String loginCode) {
         Entry entry = cache.remove(loginCode);
         if (entry == null) {

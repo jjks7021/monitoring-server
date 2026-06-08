@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -82,7 +81,7 @@ public class MonitoringService {
                                 .activeCrises(activeCrises)
                                 .build();
 
-                // 실시간 웹소켓 전송 (보호자 앱 등)
+                // 실시간으로 보호자 앱에 분석 결과 전송
                 messagingTemplate.convertAndSend("/topic/risk/" + loginCode, response);
 
                 return response;

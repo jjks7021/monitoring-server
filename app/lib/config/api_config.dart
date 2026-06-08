@@ -4,8 +4,7 @@ import 'package:flutter/foundation.dart'
 class ApiConfig {
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
-  /// `--dart-define=API_BASE_URL=...` 가 있으면 우선 사용.
-  /// 없으면 Android → 에뮬레이터 호스트(10.0.2.2), 그 외 → localhost.
+  // 환경변수 우선 적용, 없으면 기본값 사용
   static String get baseUrl {
     if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
     if (kIsWeb) return 'http://127.0.0.1:8080';

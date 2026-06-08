@@ -19,9 +19,7 @@ public class UserConnectionService {
     private final DeviceRepository deviceRepository;
     private final SecureRandom random = new SecureRandom();
 
-    /**
-     * 피보호자 기기: 최초 접속 시 6자리 코드 발급, 동일 기기는 기존 코드 유지.
-     */
+    // 피보호자 기기: 최초 접속 시 6자리 코드 발급, 동일 기기는 기존 코드 유지
     @Transactional
     public UserLoginResponse connectPatient(String hardwareId) {
         if (hardwareId == null || hardwareId.isBlank()) {
@@ -33,9 +31,7 @@ public class UserConnectionService {
                 .orElseGet(() -> createPatientWithNewCode(hardwareId));
     }
 
-    /**
-     * 보호자: 피보호자가 발급받은 6자리 코드와 일치해야 연결됨.
-     */
+    // 보호자: 피보호자가 발급받은 6자리 코드가 일치해야 연결 가능
     @Transactional(readOnly = true)
     public UserLoginResponse connectGuardian(String loginCode) {
         String normalized = normalizeCode(loginCode);

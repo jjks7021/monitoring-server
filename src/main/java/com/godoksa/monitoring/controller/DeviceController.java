@@ -68,9 +68,7 @@ public class DeviceController {
         }
     }
 
-    /**
-     * 긴급 상황 시 1회성 스냅샷 업로드 (DB·파일 저장 없음, 메모리 TTL 후 자동 소멸)
-     */
+    // 긴급 사진 임시 저장
     @PostMapping(value = "/emergency-photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadEmergencyPhoto(
             @RequestParam String loginCode,

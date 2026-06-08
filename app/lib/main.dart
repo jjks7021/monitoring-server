@@ -56,9 +56,8 @@ class _GodoksaAppState extends State<GodoksaApp> {
           elevation: 0,
           centerTitle: true,
           titleTextStyle: TextStyle(
-            fontFamily: 'YPairingFont', // 💡 앱바에 Y페어링체 적용
+            fontFamily: 'YPairingFont',
             fontSize: 22,
-            // fontWeight: FontWeight.bold, <- 충돌 방지를 위해 삭제
             color: Colors.white,
           ),
         ),
@@ -93,7 +92,7 @@ Route _createRoute(Widget page) {
   );
 }
 
-// --- ⏳ 1. 로딩창 ---
+// 스플래시 화면
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
   @override
@@ -135,7 +134,7 @@ class _SplashScreenState extends State<SplashScreen> {
             const Text(
               '소중한 사람과 마음을 연결하는',
               style: TextStyle(
-                fontFamily: 'YPairingFont', // 💡 Y페어링체 적용
+                fontFamily: 'YPairingFont',
                 fontSize: 18.0,
                 color: requestedTextColor,
                 letterSpacing: 1.2,
@@ -145,7 +144,7 @@ class _SplashScreenState extends State<SplashScreen> {
             const Text(
               '릾',
               style: TextStyle(
-                fontFamily: 'YPairingFont', // 💡 Y페어링체 적용
+                fontFamily: 'YPairingFont',
                 fontSize: 130.0,
                 color: requestedTextColor,
               ),
@@ -154,7 +153,7 @@ class _SplashScreenState extends State<SplashScreen> {
             const Text(
               '하루 신호',
               style: TextStyle(
-                fontFamily: 'YPairingFont', // 💡 Y페어링체 적용
+                fontFamily: 'YPairingFont',
                 fontSize: 48.0,
                 color: requestedTextColor,
                 // fontWeight: FontWeight.bold, <- 충돌 방지를 위해 삭제
@@ -164,7 +163,7 @@ class _SplashScreenState extends State<SplashScreen> {
             const Text(
               '서비스',
               style: TextStyle(
-                fontFamily: 'YPairingFont', // 💡 Y페어링체 적용
+                fontFamily: 'YPairingFont',
                 fontSize: 48.0,
                 color: requestedTextColor,
                 // fontWeight: FontWeight.bold, <- 충돌 방지를 위해 삭제
@@ -178,7 +177,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-//사용자 유형 선택
+// 사용자 역할 선택 화면
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
   @override
@@ -329,7 +328,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   }
 }
 
-// 피보호자 모드
+// 피보호자 연결 화면
 class PatientConnectScreen extends StatefulWidget {
   const PatientConnectScreen({super.key});
   @override
@@ -513,7 +512,7 @@ class _PatientConnectScreenState extends State<PatientConnectScreen> {
   }
 }
 
-// 보호자 모드
+// 보호자 연결 화면
 class GuardianConnectScreen extends StatefulWidget {
   const GuardianConnectScreen({super.key});
   @override

@@ -5,7 +5,6 @@ import com.godoksa.monitoring.entity.Crisis;
 import com.godoksa.monitoring.entity.User;
 import com.godoksa.monitoring.repository.CrisisRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -13,12 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
-/**
- * 보호자 앱 실시간 위험 알림 — DB Crisis + WebSocket /topic/crisis/{loginCode}
- */
+// 실시간 위험 알림 전송 서비스
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class CrisisAlertService {
 
     public static final String AI_HIGH_RISK = "AI_HIGH_RISK";
@@ -30,9 +26,7 @@ public class CrisisAlertService {
     @Value("${monitoring.ai.crisis-threshold:0.6}")
     private double aiCrisisThreshold;
 
-    /**
-     * AI 고독사 확률이 임계값 이상이면 Crisis 생성 후 보호자에게 알림 (최초 1회, 동일 유형 활성 시 재알림 없음)
-     */
+    // 위험 수치가 기준을 넘으면 보호자한테 알림 전송
     @Transactional
     public void raiseAiHighRiskIfNeeded(User user, double probability, String aiSummary) {
         if (probability < aiCrisisThreshold) {
@@ -62,7 +56,6 @@ public class CrisisAlertService {
                 .build());
 
         publish(crisis, loginCode);
-        log.info("AI_HIGH_RISK crisis raised for loginCode={} probability={}", loginCode, probability);
     }
 
     @Transactional

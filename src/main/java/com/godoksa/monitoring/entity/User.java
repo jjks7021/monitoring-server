@@ -19,25 +19,21 @@ public class User {
     private Long id;
 
     @Column(unique = true, nullable = false)
-    private String loginCode; // 6자리 로그인 코드
+    private String loginCode; // 6자리 연결 코드
 
     @Column(nullable = false)
-    private String name; // 시연용 이름
+    private String name;
 
     @Column(nullable = false)
-    private String role; // "WARD"(보호자) 또는 "PATIENT"(환자)
-
-    // --- 고독사 예방 분석을 위한 기준 데이터 필드 추가 ---
+    private String role; // "PATIENT"(피보호자) 또는 "GUARDIAN"(보호자)
 
     @Builder.Default
-    private Integer avgToiletDuration = 20; // 평소 화장실 체류 평균 시간 (단위: 분)
+    private Integer avgToiletDuration = 20; // 평소 화장실 체류 시간 (분)
 
     @Builder.Default
-    private Double avgActivityRange = 0.0; // 최근 3일간 평균 활동 반경 ($x, y$ 변화량)
-
-    // ----------------------------------------------
+    private Double avgActivityRange = 0.0; // 최근 평균 활동 반경
 
     @CreationTimestamp
     @Column(updatable = false)
-    private LocalDateTime createdAt; // 계정 생성 시간
-}
+    private LocalDateTime createdAt;
+}

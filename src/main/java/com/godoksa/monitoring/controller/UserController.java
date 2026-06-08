@@ -24,7 +24,7 @@ public class UserController {
         }
     }
 
-    /** 피보호자: 랜덤 6자리 연결 코드 발급 (기기당 1코드 유지) */
+    // 피보호자: 랜덤 6자리 코드 발급 (기기당 1코드 유지)
     @PostMapping("/patient/connect")
     public ResponseEntity<?> connectPatient(@RequestBody ConnectPatientRequest request) {
         try {
@@ -35,7 +35,7 @@ public class UserController {
         }
     }
 
-    /** 보호자: 피보호자와 동일한 6자리 코드로 연결 */
+    // 보호자: 피보호자 6자리 코드로 연결
     @PostMapping("/guardian/connect")
     public ResponseEntity<?> connectGuardian(@RequestBody LoginRequest request) {
         try {

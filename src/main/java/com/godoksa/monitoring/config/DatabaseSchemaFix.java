@@ -10,9 +10,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
-/**
- * JPA는 {@code users} 테이블을 쓰는데, 예전 스키마 FK가 {@code user}를 가리키면 INSERT가 실패한다.
- */
+// DB 스키마 FK 자동 수정 (구버전 스키마 호환용)
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -22,8 +20,7 @@ public class DatabaseSchemaFix implements ApplicationRunner {
             "device",
             "activity_log",
             "crisis",
-            "risk_assessment"
-    );
+            "risk_assessment");
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -60,7 +57,6 @@ public class DatabaseSchemaFix implements ApplicationRunner {
             if ("user".equals(fk.get("refTable"))) {
                 String name = (String) fk.get("name");
                 jdbcTemplate.execute("ALTER TABLE `" + tableName + "` DROP FOREIGN KEY `" + name + "`");
-                log.info("Dropped obsolete FK `{}` on `{}` (was -> `user`)", name, tableName);
             }
         }
 
@@ -82,7 +78,6 @@ public class DatabaseSchemaFix implements ApplicationRunner {
                         ADD CONSTRAINT `%s`
                         FOREIGN KEY (user_id) REFERENCES users(id)
                         """.formatted(tableName, constraint));
-                log.info("Added FK `{}` on `{}` -> users(id)", constraint, tableName);
             } catch (Exception e) {
                 log.warn("Could not add FK on `{}` -> users: {}", tableName, e.getMessage());
             }
