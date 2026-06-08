@@ -286,7 +286,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                '고독사 위험도 ${pct.toStringAsFixed(0)}% → 보호자 자동 알림 조건 충족',
+                '위험도 ${pct.toStringAsFixed(0)}% 이상 → 보호자 자동 알림 전송 조건 충족',
               ),
               backgroundColor: Colors.red.shade700,
             ),
@@ -522,7 +522,7 @@ class PatientDebugDialog extends StatelessWidget {
                   Text('좌표 출처: ${PatientDebugStore.coordSource.value}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
                 Text('좌표: ${PatientDebugStore.coords.value}', style: const TextStyle(fontSize: 13)),
                 Text(
-                  '고독사 확률: ${(PatientDebugStore.probability.value * 100).toStringAsFixed(1)}%',
+                  'AI 위험도 예측: ${(PatientDebugStore.probability.value * 100).toStringAsFixed(1)}%',
                   style: const TextStyle(color: subGreen, fontWeight: FontWeight.bold, fontSize: 13),
                 ),
                 Text('분석: ${PatientDebugStore.summary.value}', style: const TextStyle(fontSize: 13)),
@@ -538,7 +538,7 @@ class PatientDebugDialog extends StatelessWidget {
                   ),
                 const SizedBox(height: 6),
                 Text(
-                  '고독사 위험도가 ${PatientDebugStore.aiAlertThresholdPercent.value.toStringAsFixed(0)}% 이상이면 '
+                  '위험도가 ${PatientDebugStore.aiAlertThresholdPercent.value.toStringAsFixed(0)}% 이상이면 '
                   '좌표 전송 시 보호자 알림이 자동으로 갑니다.',
                   style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
                 ),

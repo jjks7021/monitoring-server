@@ -233,7 +233,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                '고독사 위험도: ${(_probability * 100).toStringAsFixed(1)}%',
+                'AI 위험도 예측: ${(_probability * 100).toStringAsFixed(1)}%',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
