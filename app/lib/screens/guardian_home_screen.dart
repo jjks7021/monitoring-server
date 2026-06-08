@@ -97,9 +97,14 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.memory(bytes, fit: BoxFit.contain),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.5,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(bytes, fit: BoxFit.contain),
+                ),
               ),
             ],
           ),
@@ -152,7 +157,12 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             context: context,
             builder: (ctx) => AlertDialog(
               title: const Text('긴급 실시간 사진'),
-              content: Image.memory(bytes),
+              content: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.5,
+                ),
+                child: Image.memory(bytes, fit: BoxFit.contain),
+              ),
               actions: [
                 TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('닫기')),
               ],
@@ -182,10 +192,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               _photoRequested ? Icons.cloud_sync_rounded : Icons.add_a_photo_rounded,

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:monitoring_app/services/api_service.dart';
@@ -640,19 +640,13 @@ class GuardianMainHub extends StatefulWidget {
 class _GuardianMainHubState extends State<GuardianMainHub> {
   int _currentIndex = 0;
   final Map<DateTime, List<String>> _sharedMemoEvents = {};
-  late final List<Widget> _tabs;
   final Color subGreen = const Color(0xFF4F6F52);
   StreamSubscription<Map<String, dynamic>>? _crisisSub;
+  StreamSubscription<Map<String, dynamic>>? _riskSub;
 
   @override
   void initState() {
     super.initState();
-    _tabs = [
-      const GuardianHomeScreen(),
-      GuardianCalendarScreen(memoEvents: _sharedMemoEvents),
-      const GuardianNotificationScreen(),
-      const SettingsScreen(isGuardian: true),
-    ];
     _initGuardianRealtime();
   }
 
@@ -672,20 +666,65 @@ class _GuardianMainHubState extends State<GuardianMainHub> {
       );
       setState(() => _currentIndex = 2);
     });
+
+    _riskSub = RiskStreamService.instance.riskUpdates.listen((data) {
+      if (!mounted) return;
+      final prob = (data['solitaryDeathProbability'] as num?)?.toDouble() ?? 0.0;
+      final summary = data['aiSummary']?.toString() ?? '';
+      if (prob >= 0.6 && summary.isNotEmpty) {
+        final now = DateTime.now();
+        final keyDay = DateTime.utc(now.year, now.month, now.day);
+        final hourStr = now.hour.toString().padLeft(2, '0');
+        final minStr = now.minute.toString().padLeft(2, '0');
+        final aiEventText = '[AI 위험] $hourStr:$minStr 위험도 ${(prob * 100).toStringAsFixed(1)}% - $summary';
+        setState(() {
+          _sharedMemoEvents.putIfAbsent(keyDay, () => []);
+          if (!_sharedMemoEvents[keyDay]!.any((event) => event.contains('위험도 ${(prob * 100).toStringAsFixed(1)}%'))) {
+            _sharedMemoEvents[keyDay]!.add(aiEventText);
+            _sharedMemoEvents[keyDay]!.sort();
+          }
+        });
+      }
+    });
+
+    try {
+      final snapshot = await ApiService.instance.getLatestRisk(loginCode);
+      if (snapshot != null && snapshot.probability >= 0.6) {
+        final now = DateTime.now();
+        final keyDay = DateTime.utc(now.year, now.month, now.day);
+        final hourStr = now.hour.toString().padLeft(2, '0');
+        final minStr = now.minute.toString().padLeft(2, '0');
+        final aiEventText = '[AI 위험] $hourStr:$minStr 위험도 ${(snapshot.probability * 100).toStringAsFixed(1)}% - ${snapshot.summary}';
+        setState(() {
+          _sharedMemoEvents.putIfAbsent(keyDay, () => []);
+          if (!_sharedMemoEvents[keyDay]!.any((event) => event.contains('위험도 ${(snapshot.probability * 100).toStringAsFixed(1)}%'))) {
+            _sharedMemoEvents[keyDay]!.add(aiEventText);
+            _sharedMemoEvents[keyDay]!.sort();
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   @override
   void dispose() {
     _crisisSub?.cancel();
+    _riskSub?.cancel();
     RiskStreamService.instance.disconnect();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final tabs = [
+      const GuardianHomeScreen(),
+      GuardianCalendarScreen(memoEvents: _sharedMemoEvents),
+      const GuardianNotificationScreen(),
+      const SettingsScreen(isGuardian: true),
+    ];
     return Scaffold(
       appBar: AppBar(title: const Text('릾 하루신호')),
-      body: _tabs[_currentIndex],
+      body: tabs[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
@@ -721,7 +760,7 @@ class GuardianCalendarScreen extends StatefulWidget {
 
 class _GuardianCalendarScreenState extends State<GuardianCalendarScreen> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
-  DateTime _focusedDay = DateTime.utc(2026, 5, 22);
+  DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
   final TextEditingController _textController = TextEditingController();
@@ -849,8 +888,9 @@ class _GuardianCalendarScreenState extends State<GuardianCalendarScreen> {
                           : ListView.builder(
                               itemCount: currentMemos.length,
                               itemBuilder: (context, index) {
+                                final isAi = currentMemos[index].startsWith('[AI 위험]');
                                 return Card(
-                                  color: const Color(0xFFF0F4F0),
+                                  color: isAi ? const Color(0xFFFFF5F5) : const Color(0xFFF0F4F0),
                                   elevation: 0,
                                   shape: const StadiumBorder(),
                                   child: Padding(
@@ -859,17 +899,17 @@ class _GuardianCalendarScreenState extends State<GuardianCalendarScreen> {
                                     ),
                                     child: ListTile(
                                       dense: true,
-                                      leading: const Icon(
-                                        Icons.circle,
-                                        size: 8,
-                                        color: Color(0xFF4F6F52),
+                                      leading: Icon(
+                                        isAi ? Icons.warning_rounded : Icons.circle,
+                                        size: isAi ? 16 : 8,
+                                        color: isAi ? Colors.red : const Color(0xFF4F6F52),
                                       ),
                                       title: Text(
                                         currentMemos[index],
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 15,
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
+                                          color: isAi ? Colors.red.shade900 : Colors.black87,
                                         ),
                                       ),
                                       trailing: IconButton(
@@ -922,7 +962,38 @@ class _GuardianCalendarScreenState extends State<GuardianCalendarScreen> {
     BoxDecoration? decoration,
     List<dynamic>? events,
   }) {
-    final dayEvents = events ?? widget.memoEvents[_normalizeDate(day)] ?? [];
+    final normalized = _normalizeDate(day);
+    final dayEvents = events ?? widget.memoEvents[normalized] ?? [];
+    final hasAiWarning = dayEvents.any((event) => event.toString().startsWith('[AI 위험]'));
+
+    BoxDecoration? finalDecoration = decoration;
+    Color finalTextColor = textColor;
+
+    if (hasAiWarning) {
+      if (decoration == null) {
+        finalDecoration = BoxDecoration(
+          color: const Color(0xFFFFF1F1),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.red.shade300, width: 1.5),
+        );
+        finalTextColor = Colors.red.shade900;
+      } else {
+        final isSelected = decoration.color == const Color(0xFF4F6F52);
+        final isToday = decoration.color == const Color(0xFF799F79);
+        if (isSelected) {
+          finalDecoration = const BoxDecoration(
+            color: Color(0xFFD32F2F),
+            shape: BoxShape.circle,
+          );
+        } else if (isToday) {
+          finalDecoration = const BoxDecoration(
+            color: Color(0xFFE57373),
+            shape: BoxShape.circle,
+          );
+        }
+      }
+    }
+
     return Container(
       alignment: Alignment.center,
       child: Column(
@@ -932,11 +1003,11 @@ class _GuardianCalendarScreenState extends State<GuardianCalendarScreen> {
             width: 38,
             height: 38,
             alignment: Alignment.center,
-            decoration: decoration,
+            decoration: finalDecoration,
             child: Text(
               '${day.day}',
               style: TextStyle(
-                color: textColor,
+                color: finalTextColor,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -950,22 +1021,25 @@ class _GuardianCalendarScreenState extends State<GuardianCalendarScreen> {
               children: dayEvents
                   .take(4)
                   .map(
-                    (_) => Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                      child: const SizedBox(
-                        width: 5,
-                        height: 5,
-                        child: AspectRatio(
-                          aspectRatio: 1.0,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Color(0xFF4F6F52),
+                    (event) {
+                      final isAi = event.toString().startsWith('[AI 위험]');
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                        child: SizedBox(
+                          width: 5,
+                          height: 5,
+                          child: AspectRatio(
+                            aspectRatio: 1.0,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isAi ? Colors.red : const Color(0xFF4F6F52),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   )
                   .toList(),
             ),
