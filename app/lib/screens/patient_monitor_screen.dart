@@ -45,6 +45,14 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
   @override
   void initState() {
     super.initState();
+    PatientDebugStore.triggerTestCrisis = _triggerTestCrisis;
+    PatientDebugStore.setLocationTag = (tag) {
+      setState(() {
+        _locationTag = tag;
+        _toiletStart = _locationTag == 'TOILET' ? DateTime.now() : null;
+      });
+      _syncStore();
+    };
     if (_supportsMlKitPose) {
       _detector = PoseDetector(options: PoseDetectorOptions());
     }
@@ -54,6 +62,17 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
     // 첫 전송은 즉시, 이후 10초마다
     Future.microtask(_captureAndSend);
     _timer = Timer.periodic(const Duration(seconds: 5), (_) => _captureAndSend());
+  }
+
+  void _syncStore() {
+    PatientDebugStore.coords.value = _coords;
+    PatientDebugStore.coordSource.value = _coordSource;
+    PatientDebugStore.probability.value = _probability;
+    PatientDebugStore.summary.value = _summary;
+    PatientDebugStore.error.value = _error;
+    PatientDebugStore.busy.value = _busy;
+    PatientDebugStore.locationTag.value = _locationTag;
+    PatientDebugStore.aiAlertThresholdPercent.value = _aiAlertThresholdPercent;
   }
 
   /// 웹·포즈 미검출 시: 시간에 따라 변하는 좌표
@@ -85,6 +104,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
       final pct = (cfg['aiCrisisThresholdPercent'] as num?)?.toDouble();
       if (pct != null && mounted) {
         setState(() => _aiAlertThresholdPercent = pct);
+        _syncStore();
       }
     } catch (_) {}
   }
@@ -123,6 +143,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
               _error = '카메라 권한 필요';
               _summary = '설정에서 카메라 권한을 허용해 주세요';
             });
+            _syncStore();
           }
           return;
         }
@@ -139,6 +160,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
             _error = '사용 가능한 카메라가 없습니다';
             _summary = '좌표 시뮬레이션으로 전송합니다';
           });
+          _syncStore();
         }
         return;
       }
@@ -161,6 +183,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
                   ? '카메라 연결됨 (macOS: 포즈 분석 없음, 좌표는 시뮬레이션)'
                   : '카메라 연결됨';
         });
+        _syncStore();
       }
     } catch (e) {
       if (mounted) {
@@ -172,6 +195,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
                   : '카메라 초기화 실패: $e';
           _summary = '카메라 없이 좌표 시뮬레이션으로 전송합니다';
         });
+        _syncStore();
       }
     }
   }
@@ -189,10 +213,12 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
           _summary = '로그인 필요';
           _error = '설정 → 로그아웃 후, 피보호자 → 모니터링 시작을 눌러주세요';
         });
+        _syncStore();
       }
       return;
     }
     _busy = true;
+    _syncStore();
     try {
       double x = 0, y = 0, z = 0;
       var source = kIsWeb ? '시뮬레이션 (웹)' : '시뮬레이션';
@@ -255,6 +281,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
           _summary = result.summary;
           _error = null;
         });
+        _syncStore();
         if (crossed) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -273,9 +300,11 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
           _error = msg;
           _summary = '서버 연결 실패';
         });
+        _syncStore();
       }
     } finally {
       _busy = false;
+      _syncStore();
     }
   }
 
@@ -295,6 +324,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
     }
 
     _busy = true;
+    _syncStore();
     String? capturePath;
     try {
       final file = await _camera!.takePicture().timeout(const Duration(seconds: 8));
@@ -320,6 +350,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
     } finally {
       await _deleteCaptureFile(capturePath);
       _busy = false;
+      _syncStore();
     }
     await _captureAndSend();
   }
@@ -392,61 +423,6 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
                 ),
               ),
       ),
-      Container(
-        color: const Color(0xFFE8F3D6),
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'ROOM', label: Text('거실')),
-                ButtonSegment(value: 'TOILET', label: Text('화장실')),
-              ],
-              selected: {_locationTag},
-              onSelectionChanged: (s) => setState(() {
-                _locationTag = s.first;
-                _toiletStart =
-                    _locationTag == 'TOILET' ? DateTime.now() : null;
-              }),
-            ),
-            Text('서버: ${ApiConfig.baseUrl}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            if (_coordSource.isNotEmpty)
-              Text('좌표 출처: $_coordSource', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            Text('좌표: $_coords'),
-            Text(
-              '고독사 확률: ${(_probability * 100).toStringAsFixed(1)}%',
-              style: const TextStyle(color: subGreen, fontWeight: FontWeight.bold),
-            ),
-            Text('분석: $_summary'),
-            if (_error != null)
-              Text(
-                _error!,
-                style: const TextStyle(color: Colors.red, fontSize: 12),
-              ),
-            if (_busy)
-              const Padding(
-                padding: EdgeInsets.only(top: 4),
-                child: LinearProgressIndicator(minHeight: 2),
-              ),
-            const SizedBox(height: 6),
-            Text(
-              '고독사 위험도가 ${_aiAlertThresholdPercent.toStringAsFixed(0)}% 이상이면 '
-              '좌표 전송 시 보호자 알림이 자동으로 갑니다.',
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
-            ),
-            const SizedBox(height: 8),
-            TextButton.icon(
-              onPressed: _busy ? null : _triggerTestCrisis,
-              icon: const Icon(Icons.bug_report_outlined, size: 18),
-              label: const Text(
-                '알림 경로만 수동 테스트 (AI 위험도 무관)',
-                style: TextStyle(fontSize: 12),
-              ),
-            ),
-          ],
-        ),
-      ),
     ]);
   }
 
@@ -460,6 +436,7 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
       return;
     }
     setState(() => _busy = true);
+    _syncStore();
     try {
       await ApiService.instance.triggerTestCrisis(loginCode);
       if (!mounted) return;
@@ -480,7 +457,111 @@ class _PatientMonitorScreenState extends State<PatientMonitorScreen> {
         ),
       );
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        _syncStore();
+      }
     }
+  }
+}
+
+class PatientDebugStore {
+  static final ValueNotifier<String> coords = ValueNotifier('-');
+  static final ValueNotifier<String> coordSource = ValueNotifier('');
+  static final ValueNotifier<double> probability = ValueNotifier(0);
+  static final ValueNotifier<String> summary = ValueNotifier('연결 대기 중');
+  static final ValueNotifier<String?> error = ValueNotifier(null);
+  static final ValueNotifier<bool> busy = ValueNotifier(false);
+  static final ValueNotifier<String> locationTag = ValueNotifier('ROOM');
+  static final ValueNotifier<double> aiAlertThresholdPercent = ValueNotifier(60);
+
+  static VoidCallback? triggerTestCrisis;
+  static void Function(String)? setLocationTag;
+}
+
+class PatientDebugDialog extends StatelessWidget {
+  const PatientDebugDialog({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        PatientDebugStore.coords,
+        PatientDebugStore.coordSource,
+        PatientDebugStore.probability,
+        PatientDebugStore.summary,
+        PatientDebugStore.error,
+        PatientDebugStore.busy,
+        PatientDebugStore.locationTag,
+        PatientDebugStore.aiAlertThresholdPercent,
+      ]),
+      builder: (context, _) {
+        const subGreen = Color(0xFF4F6F52);
+        return AlertDialog(
+          backgroundColor: const Color(0xFFE8F3D6),
+          title: const Text('디버그 정보', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'ROOM', label: Text('거실')),
+                    ButtonSegment(value: 'TOILET', label: Text('화장실')),
+                  ],
+                  selected: {PatientDebugStore.locationTag.value},
+                  onSelectionChanged: (s) {
+                    PatientDebugStore.setLocationTag?.call(s.first);
+                  },
+                ),
+                const SizedBox(height: 8),
+                Text('서버: ${ApiConfig.baseUrl}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                if (PatientDebugStore.coordSource.value.isNotEmpty)
+                  Text('좌표 출처: ${PatientDebugStore.coordSource.value}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                Text('좌표: ${PatientDebugStore.coords.value}', style: const TextStyle(fontSize: 13)),
+                Text(
+                  '고독사 확률: ${(PatientDebugStore.probability.value * 100).toStringAsFixed(1)}%',
+                  style: const TextStyle(color: subGreen, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                Text('분석: ${PatientDebugStore.summary.value}', style: const TextStyle(fontSize: 13)),
+                if (PatientDebugStore.error.value != null)
+                  Text(
+                    PatientDebugStore.error.value!,
+                    style: const TextStyle(color: Colors.red, fontSize: 12),
+                  ),
+                if (PatientDebugStore.busy.value)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: LinearProgressIndicator(minHeight: 2),
+                  ),
+                const SizedBox(height: 6),
+                Text(
+                  '고독사 위험도가 ${PatientDebugStore.aiAlertThresholdPercent.value.toStringAsFixed(0)}% 이상이면 '
+                  '좌표 전송 시 보호자 알림이 자동으로 갑니다.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: PatientDebugStore.busy.value ? null : PatientDebugStore.triggerTestCrisis,
+                  icon: const Icon(Icons.bug_report_outlined, size: 18),
+                  label: const Text(
+                    '알림 경로만 수동 테스트 (AI 위험도 무관)',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('닫기', style: TextStyle(color: subGreen, fontWeight: FontWeight.bold)),
+            )
+          ],
+        );
+      },
+    );
   }
 }

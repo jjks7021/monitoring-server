@@ -1123,7 +1123,10 @@ class _PatientMainHubState extends State<PatientMainHub> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('릾 하루신호')),
-      body: _tabs[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _tabs,
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
@@ -1470,6 +1473,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
+          if (!widget.isGuardian) ...[
+            const SizedBox(height: 40),
+            Center(
+              child: TextButton(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => const PatientDebugDialog(),
+                  );
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.grey.shade300,
+                  splashFactory: NoSplash.splashFactory,
+                ),
+                child: const Text('디버그 정보', style: TextStyle(fontSize: 10)),
+              ),
+            ),
+          ],
         ],
       ),
     );
